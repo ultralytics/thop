@@ -57,6 +57,7 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 dependencies = [
+    "packaging",
     "torch",
 ]
 
