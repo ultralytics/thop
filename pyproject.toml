@@ -12,7 +12,7 @@
 # - `[tool.setuptools]`: Configures settings specific to the `setuptools` build backend.
 # 
 # Installation:
-# The `thop` library can be installed using the command: `pip install thop`
+# The `thop` library can be installed using the command: `pip install ultralytics-thop`
 # For development purposes, you can install the package in editable mode with: `pip install -e .`
 # This approach allows for real-time code modifications without the need for re-installation.
 # 
@@ -24,7 +24,7 @@ requires = ["setuptools>=57.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "thop"
+name = "ultralytics-thop"
 version = "0.0.1"  # Placeholder version, needs to be dynamically set
 description = "A tool to count the FLOPs of PyTorch model."
 readme = "README.md"
