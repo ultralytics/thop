@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+
 from thop.profile import profile
 
 input_size = 160
@@ -18,15 +19,9 @@ models = {
     "BiRNN": nn.Sequential(nn.RNN(input_size, hidden_size, bidirectional=True)),
     "BiGRU": nn.Sequential(nn.GRU(input_size, hidden_size, bidirectional=True)),
     "BiLSTM": nn.Sequential(nn.LSTM(input_size, hidden_size, bidirectional=True)),
-    "stacked-BiRNN": nn.Sequential(
-        nn.RNN(input_size, hidden_size, bidirectional=True, num_layers=4)
-    ),
-    "stacked-BiGRU": nn.Sequential(
-        nn.GRU(input_size, hidden_size, bidirectional=True, num_layers=4)
-    ),
-    "stacked-BiLSTM": nn.Sequential(
-        nn.LSTM(input_size, hidden_size, bidirectional=True, num_layers=4)
-    ),
+    "stacked-BiRNN": nn.Sequential(nn.RNN(input_size, hidden_size, bidirectional=True, num_layers=4)),
+    "stacked-BiGRU": nn.Sequential(nn.GRU(input_size, hidden_size, bidirectional=True, num_layers=4)),
+    "stacked-BiLSTM": nn.Sequential(nn.LSTM(input_size, hidden_size, bidirectional=True, num_layers=4)),
 }
 
 print("{} | {} | {}".format("Model", "Params(M)", "FLOPs(G)"))
@@ -49,9 +44,7 @@ for name, model in models.items():
 
 # validate batch_first support
 inputs = torch.randn(100, 32, input_size)
-ops_time_first = profile(
-    nn.Sequential(nn.LSTM(input_size, hidden_size)), (inputs,), verbose=False
-)[0]
+ops_time_first = profile(nn.Sequential(nn.LSTM(input_size, hidden_size)), (inputs,), verbose=False)[0]
 ops_batch_first = profile(
     nn.Sequential(nn.LSTM(input_size, hidden_size, batch_first=True)),
     (inputs.transpose(0, 1),),

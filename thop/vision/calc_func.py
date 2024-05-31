@@ -1,12 +1,15 @@
-import torch
-import numpy as np
 import warnings
+
+import numpy as np
+import torch
+
 
 def l_prod(in_list):
     res = 1
     for _ in in_list:
         res *= _
     return res
+
 
 def l_sum(in_list):
     res = 0
@@ -25,6 +28,7 @@ def calculate_parameters(param_list):
 def calculate_zero_ops():
     return torch.DoubleTensor([int(0)])
 
+
 def calculate_conv2d_flops(input_size: list, output_size: list, kernel_size: list, groups: int, bias: bool = False):
     # n, out_c, oh, ow = output_size
     # n, in_c, ih, iw = input_size
@@ -36,18 +40,19 @@ def calculate_conv2d_flops(input_size: list, output_size: list, kernel_size: lis
 
 def calculate_conv(bias, kernel_size, output_size, in_channel, group):
     warnings.warn("This API is being deprecated.")
-    """inputs are all numbers!"""
+    """Inputs are all numbers!"""
     return torch.DoubleTensor([output_size * (in_channel / group * kernel_size + bias)])
 
 
 def calculate_norm(input_size):
-    """input is a number not a array or tensor"""
+    """Input is a number not a array or tensor."""
     return torch.DoubleTensor([2 * input_size])
+
 
 def calculate_relu_flops(input_size):
     # x[x < 0] = 0
     return 0
-    
+
 
 def calculate_relu(input_size: torch.Tensor):
     warnings.warn("This API is being deprecated")

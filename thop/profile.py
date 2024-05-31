@@ -1,19 +1,15 @@
 from distutils.version import LooseVersion
 
-from thop.vision.basic_hooks import *
 from thop.rnn_hooks import *
-
+from thop.vision.basic_hooks import *
 
 # logger = logging.getLogger(__name__)
 # logger.setLevel(logging.INFO)
-
 from .utils import prGreen, prRed, prYellow
 
 if LooseVersion(torch.__version__) < LooseVersion("1.0.0"):
     logging.warning(
-        "You are using an old version PyTorch {version}, which THOP does NOT support.".format(
-            version=torch.__version__
-        )
+        "You are using an old version PyTorch {version}, which THOP does NOT support.".format(version=torch.__version__)
     )
 
 default_dtype = torch.float64
@@ -96,9 +92,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         m_type = type(m)
 
         fn = None
-        if (
-            m_type in custom_ops
-        ):  # if defined both op maps, use custom_ops to overwrite.
+        if m_type in custom_ops:  # if defined both op maps, use custom_ops to overwrite.
             fn = custom_ops[m_type]
             if m_type not in types_collection and verbose:
                 print("[INFO] Customize rule %s() %s." % (fn.__qualname__, m_type))
@@ -108,10 +102,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
                 print("[INFO] Register %s() for %s." % (fn.__qualname__, m_type))
         else:
             if m_type not in types_collection and report_missing:
-                prRed(
-                    "[WARN] Cannot find rule for %s. Treat it as zero Macs and zero Params."
-                    % m_type
-                )
+                prRed("[WARN] Cannot find rule for %s. Treat it as zero Macs and zero Params." % m_type)
 
         if fn is not None:
             handler = m.register_forward_hook(fn)
@@ -191,10 +182,7 @@ def profile(
                 print("[INFO] Register %s() for %s." % (fn.__qualname__, m_type))
         else:
             if m_type not in types_collection and report_missing:
-                prRed(
-                    "[WARN] Cannot find rule for %s. Treat it as zero Macs and zero Params."
-                    % m_type
-                )
+                prRed("[WARN] Cannot find rule for %s. Treat it as zero Macs and zero Params." % m_type)
 
         if fn is not None:
             handler_collection[m] = (
@@ -220,9 +208,7 @@ def profile(
             # else:
             #     m_ops, m_params = m.total_ops, m.total_params
             next_dict = {}
-            if m in handler_collection and not isinstance(
-                m, (nn.Sequential, nn.ModuleList)
-            ):
+            if m in handler_collection and not isinstance(m, (nn.Sequential, nn.ModuleList)):
                 m_ops, m_params = m.total_ops.item(), m.total_params.item()
             else:
                 m_ops, m_params, next_dict = dfs_count(m, prefix=prefix + "\t")

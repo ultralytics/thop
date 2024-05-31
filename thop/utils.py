@@ -4,12 +4,15 @@ COLOR_RED = "91m"
 COLOR_GREEN = "92m"
 COLOR_YELLOW = "93m"
 
+
 def colorful_print(fn_print, color=COLOR_RED):
     def actual_call(*args, **kwargs):
         print(f"\033[{color}", end="")
         fn_print(*args, **kwargs)
         print("\033[00m", end="")
+
     return actual_call
+
 
 prRed = colorful_print(print, color=COLOR_RED)
 prGreen = colorful_print(print, color=COLOR_GREEN)

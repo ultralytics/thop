@@ -1,9 +1,11 @@
 import argparse
 import logging
-from .calc_func import *
+
 import torch
 import torch.nn as nn
 from torch.nn.modules.conv import _ConvNd
+
+from .calc_func import *
 
 multiply_adds = 1
 
@@ -26,11 +28,11 @@ def count_convNd(m: _ConvNd, x, y: torch.Tensor):
     bias_ops = 1 if m.bias is not None else 0
 
     m.total_ops += calculate_conv2d_flops(
-        input_size = list(x.shape),
-        output_size = list(y.shape),
-        kernel_size = list(m.weight.shape),
-        groups = m.groups,
-        bias = m.bias
+        input_size=list(x.shape),
+        output_size=list(y.shape),
+        kernel_size=list(m.weight.shape),
+        groups=m.groups,
+        bias=m.bias,
     )
     # N x Cout x H x W x  (Cin x Kw x Kh + bias)
     # m.total_ops += calculate_conv(
@@ -64,7 +66,7 @@ def count_normalization(m: nn.modules.batchnorm._BatchNorm, x, y):
     x = x[0]
     # bn is by default fused in inference
     flops = calculate_norm(x.numel())
-    if (getattr(m, 'affine', False) or getattr(m, 'elementwise_affine', False)):
+    if getattr(m, "affine", False) or getattr(m, "elementwise_affine", False):
         flops *= 2
     m.total_ops += flops
 
@@ -112,10 +114,7 @@ def count_avgpool(m, x, y):
 
 
 def count_adap_avgpool(m, x, y):
-    kernel = torch.div(
-        torch.DoubleTensor([*(x[0].shape[2:])]), 
-        torch.DoubleTensor([*(y.shape[2:])])
-    )
+    kernel = torch.div(torch.DoubleTensor([*(x[0].shape[2:])]), torch.DoubleTensor([*(y.shape[2:])]))
     total_add = torch.prod(kernel)
     num_elements = y.numel()
     m.total_ops += calculate_adaptive_avg(total_add, num_elements)
