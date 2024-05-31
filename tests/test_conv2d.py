@@ -8,7 +8,9 @@ from thop import profile
 
 class TestUtils:
     def test_conv2d_no_bias(self):
-        """Tests a 2D convolutional layer without bias using THOP profiling with predefined input dimensions and convolution parameters."""
+        """Tests a 2D convolutional layer without bias using THOP profiling with predefined input dimensions and
+        convolution parameters.
+        """
         n, in_c, ih, iw = 1, 3, 32, 32  # torch.randint(1, 10, (4,)).tolist()
         out_c, kh, kw = 12, 5, 5
         s, p, d, g = 1, 1, 1, 1

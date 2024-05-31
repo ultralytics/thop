@@ -55,7 +55,9 @@ class OnnxProfile:
         return diction
 
     def nodes_counter(self, diction, node):
-        """Count nodes of a specific type in an ONNX graph, returning the count and associated node operation details."""
+        """Count nodes of a specific type in an ONNX graph, returning the count and associated node operation
+        details.
+        """
         if node.op_type not in onnx_operators:
             print("Sorry, we haven't add ", node.op_type, "into dictionary.")
             return 0, None, None

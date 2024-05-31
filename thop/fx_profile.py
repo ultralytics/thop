@@ -129,7 +129,9 @@ def null_print(*args, **kwargs):
 
 
 def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
-    """Profiles the given torch.nn Module to calculate total FLOPs for each operation and prints detailed node information if verbose."""
+    """Profiles the given torch.nn Module to calculate total FLOPs for each operation and prints detailed node
+    information if verbose.
+    """
     gm: torch.fx.GraphModule = symbolic_trace(mod)
     g = gm.graph
     ShapeProp(gm).propagate(input)
@@ -226,7 +228,9 @@ if __name__ == "__main__":
             self.myop = MyOP()
 
         def forward(self, x):
-            """Applies two linear transformations to the input tensor, clamps the second, then combines and processes with MyOP operator."""
+            """Applies two linear transformations to the input tensor, clamps the second, then combines and processes
+            with MyOP operator.
+            """
             out1 = self.linear1(x)
             out2 = self.linear2(x).clamp(min=0.0, max=1.0)
             return self.myop(out1 + out2)

@@ -65,7 +65,9 @@ def calculate_relu(input_size: torch.Tensor):
 
 
 def calculate_softmax(batch_size, nfeatures):
-    """Calculate the number of FLOPs required for a softmax activation function based on batch size and number of features."""
+    """Calculate the number of FLOPs required for a softmax activation function based on batch size and number of
+    features.
+    """
     total_exp = nfeatures
     total_add = nfeatures - 1
     total_div = nfeatures

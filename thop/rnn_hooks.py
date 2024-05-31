@@ -57,7 +57,9 @@ def count_gru_cell(m: nn.GRUCell, x: torch.Tensor, y: torch.Tensor):
 
 
 def _count_lstm_cell(input_size, hidden_size, bias=True):
-    """Calculates the total operations for an LSTM cell during inference given input size, hidden size, and optional bias."""
+    """Calculates the total operations for an LSTM cell during inference given input size, hidden size, and optional
+    bias.
+    """
     total_ops = 0
 
     # i = \sigma(W_{ii} x + b_{ii} + W_{hi} h + b_{hi}) \\
@@ -80,7 +82,9 @@ def _count_lstm_cell(input_size, hidden_size, bias=True):
 
 
 def count_lstm_cell(m: nn.LSTMCell, x: torch.Tensor, y: torch.Tensor):
-    """Count the number of operations for a single LSTM cell in a given batch, updating the model's total operations count."""
+    """Count the number of operations for a single LSTM cell in a given batch, updating the model's total operations
+    count.
+    """
     total_ops = _count_lstm_cell(m.input_size, m.hidden_size, m.bias)
 
     batch_size = x[0].size(0)
@@ -166,7 +170,9 @@ def count_gru(m: nn.GRU, x, y):
 
 
 def count_lstm(m: nn.LSTM, x, y):
-    """Calculate the total operations for LSTM layers in a network, accounting for input size, hidden size, bias, and bidirectionality."""
+    """Calculate the total operations for LSTM layers in a network, accounting for input size, hidden size, bias, and
+    bidirectionality.
+    """
     bias = m.bias
     input_size = m.input_size
     hidden_size = m.hidden_size

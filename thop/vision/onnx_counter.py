@@ -44,7 +44,9 @@ def onnx_counter_add(diction, node):
 
 
 def onnx_counter_conv(diction, node):
-    """Calculates MACs, output size, and name for an ONNX convolution node based on input tensor dimensions and node attributes."""
+    """Calculates MACs, output size, and name for an ONNX convolution node based on input tensor dimensions and node
+    attributes.
+    """
     # bias,kernelsize,outputsize
     dim_bias = 0
     input_count = 0
@@ -125,7 +127,9 @@ def onnx_counter_relu(diction, node):
 
 
 def onnx_counter_reducemean(diction, node):
-    """Compute MACs, output size, and name for the ReduceMean ONNX node, adjusting dimensions based on the 'axes' and 'keepdims' attributes."""
+    """Compute MACs, output size, and name for the ReduceMean ONNX node, adjusting dimensions based on the 'axes' and
+    'keepdims' attributes.
+    """
     keep_dim = 0
     for attr in node.attribute:
         if "axes" in attr.name:
@@ -330,7 +334,9 @@ def onnx_counter_concat(diction, node):
 
 
 def onnx_counter_clip(diction, node):
-    """Calculate MACs, output size, and output name for an ONNX node clip operation using provided dimensions and input size."""
+    """Calculate MACs, output size, and output name for an ONNX node clip operation using provided dimensions and input
+    size.
+    """
     macs = calculate_zero_ops()
     output_name = node.output[0]
     input_size = diction[node.input[0]]

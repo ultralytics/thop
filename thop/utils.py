@@ -7,6 +7,7 @@ COLOR_YELLOW = "93m"
 
 def colorful_print(fn_print, color=COLOR_RED):
     """A decorator to print text in the specified terminal color by wrapping the given print function."""
+
     def actual_call(*args, **kwargs):
         print(f"\033[{color}", end="")
         fn_print(*args, **kwargs)

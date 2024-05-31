@@ -66,7 +66,9 @@ if LooseVersion(torch.__version__) >= LooseVersion("1.1.0"):
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
-    """Profiles a PyTorch model's operations and parameters by applying custom or default hooks and returns total operations and parameters."""
+    """Profiles a PyTorch model's operations and parameters by applying custom or default hooks and returns total
+    operations and parameters.
+    """
     handler_collection = []
     types_collection = set()
     if custom_ops is None:

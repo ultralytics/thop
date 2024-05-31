@@ -64,7 +64,9 @@ def count_convNd_ver2(m: _ConvNd, x, y: torch.Tensor):
 
 
 def count_normalization(m: nn.modules.batchnorm._BatchNorm, x, y):
-    """Calculate and add the FLOPs for a batch normalization layer, considering elementwise operations and possible affine parameters."""
+    """Calculate and add the FLOPs for a batch normalization layer, considering elementwise operations and possible
+    affine parameters.
+    """
     # https://github.com/Lyken17/pytorch-OpCounter/issues/124
     # y = (x - mean) / sqrt(eps + var) * weight + bias
     x = x[0]
@@ -146,7 +148,9 @@ def count_upsample(m, x, y):
 
 # nn.Linear
 def count_linear(m, x, y):
-    """Counts total operations for nn.Linear layers by calculating multiplications and additions based on input and output elements."""
+    """Counts total operations for nn.Linear layers by calculating multiplications and additions based on input and
+    output elements.
+    """
     total_mul = m.in_features
     # total_add = m.in_features - 1
     # total_add += 1 if m.bias is not None else 0

@@ -12,7 +12,9 @@ class TestUtils:
         assert clever_nums == "1.00B"
 
     def test_clever_format_returns_formatted_numbers(self):
-        """Tests that the clever_format function correctly formats a list of numbers as strings with a '1.00B' pattern."""
+        """Tests that the clever_format function correctly formats a list of numbers as strings with a '1.00B'
+        pattern.
+        """
         nums = [1, 2]
         format = "%.2f"
         clever_nums = utils.clever_format(nums, format)
