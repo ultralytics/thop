@@ -1,16 +1,9 @@
-from packaging.version import Version
-
 from thop.rnn_hooks import *
 from thop.vision.basic_hooks import *
 
 # logger = logging.getLogger(__name__)
 # logger.setLevel(logging.INFO)
 from .utils import prGreen, prRed, prYellow
-
-if Version(torch.__version__) < Version("1.0.0"):
-    logging.warning(
-        "You are using an old version PyTorch {version}, which THOP does NOT support.".format(version=torch.__version__)
-    )
 
 default_dtype = torch.float64
 
@@ -59,10 +52,8 @@ register_hooks = {
     nn.LSTM: count_lstm,
     nn.Sequential: zero_ops,
     nn.PixelShuffle: zero_ops,
+    nn.SyncBatchNorm: count_normalization,
 }
-
-if Version(torch.__version__) >= Version("1.1.0"):
-    register_hooks.update({nn.SyncBatchNorm: count_normalization})
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
@@ -98,14 +89,14 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         if m_type in custom_ops:  # if defined both op maps, use custom_ops to overwrite.
             fn = custom_ops[m_type]
             if m_type not in types_collection and verbose:
-                print("[INFO] Customize rule %s() %s." % (fn.__qualname__, m_type))
+                print(f"[INFO] Customize rule {fn.__qualname__}() {m_type}.")
         elif m_type in register_hooks:
             fn = register_hooks[m_type]
             if m_type not in types_collection and verbose:
-                print("[INFO] Register %s() for %s." % (fn.__qualname__, m_type))
+                print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed("[WARN] Cannot find rule for %s. Treat it as zero Macs and zero Params." % m_type)
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
 
         if fn is not None:
             handler = m.register_forward_hook(fn)
@@ -179,14 +170,14 @@ def profile(
             # if defined both op maps, use custom_ops to overwrite.
             fn = custom_ops[m_type]
             if m_type not in types_collection and verbose:
-                print("[INFO] Customize rule %s() %s." % (fn.__qualname__, m_type))
+                print(f"[INFO] Customize rule {fn.__qualname__}() {m_type}.")
         elif m_type in register_hooks:
             fn = register_hooks[m_type]
             if m_type not in types_collection and verbose:
-                print("[INFO] Register %s() for %s." % (fn.__qualname__, m_type))
+                print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed("[WARN] Cannot find rule for %s. Treat it as zero Macs and zero Params." % m_type)
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
 
         if fn is not None:
             handler_collection[m] = (
