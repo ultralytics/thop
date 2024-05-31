@@ -6,4 +6,4 @@ from .utils import clever_format
 
 default_dtype = torch.float64
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
