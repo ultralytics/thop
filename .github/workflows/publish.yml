@@ -30,9 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel build twine toml
-          pip install ultralytics --extra-index-url https://download.pytorch.org/whl/cpu
-          pip uninstall -y thop
-          pip install -e .
+          pip install -e . ultralytics --extra-index-url https://download.pytorch.org/whl/cpu
       - name: Check PyPI version
         shell: python
         run: |
@@ -52,7 +50,7 @@ jobs:
           increment_patch = (d[0] == d[1] == 0) and (0 < d[2] < 3)  # publish if patch version increments by 1 or 2
           increment_minor = (d[0] == 0) and (d[1] == 1) and v_local[2] == 0  # publish if minor version increments
 
-          increment = increment_patch or increment_minor or True
+          increment = increment_patch or increment_minor
 
           os.system(f'echo "increment={increment}" >> $GITHUB_OUTPUT')
           os.system(f'echo "version={thop.__version__}" >> $GITHUB_OUTPUT')
