@@ -1,5 +1,6 @@
-from thop import utils
 import pytest
+
+from thop import utils
 
 
 class TestUtils:
@@ -14,4 +15,3 @@ class TestUtils:
         format = "%.2f"
         clever_nums = utils.clever_format(nums, format)
         assert clever_nums == ("1.00B", "2.00B")
-    

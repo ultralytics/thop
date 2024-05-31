@@ -1,8 +1,9 @@
 import logging
+from distutils.version import LooseVersion
+
 import torch
 import torch as th
 import torch.nn as nn
-from distutils.version import LooseVersion
 
 if LooseVersion(torch.__version__) < LooseVersion("1.8.0"):
     logging.warning(
@@ -50,9 +51,7 @@ def count_fn_conv2d(input_shapes, output_shapes, *args, **kwargs):
     bias_op = 0  # check it later
     in_channel = x_shape[1]
 
-    total_ops = calculate_conv(
-        bias_op, kernel_parameters, out_shape.numel(), in_channel, groups
-    ).item()
+    total_ops = calculate_conv(bias_op, kernel_parameters, out_shape.numel(), in_channel, groups).item()
     return int(total_ops)
 
 
@@ -71,9 +70,7 @@ def count_nn_conv2d(module: nn.Conv2d, input_shapes, output_shapes):
     in_channel = module.in_channels
     groups = module.groups
     kernel_ops = module.weight.shape[2:].numel()
-    total_ops = calculate_conv(
-        bias_op, kernel_ops, out_shape.numel(), in_channel, groups
-    ).item()
+    total_ops = calculate_conv(bias_op, kernel_ops, out_shape.numel(), in_channel, groups).item()
     return int(total_ops)
 
 
@@ -114,6 +111,7 @@ missing_maps = {}
 
 from torch.fx import symbolic_trace
 from torch.fx.passes.shape_prop import ShapeProp
+
 from .utils import prGreen, prRed, prYellow
 
 
@@ -135,9 +133,7 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
 
     for node in gm.graph.nodes:
         # print(f"{node.target},\t{node.op},\t{node.meta['tensor_meta'].dtype},\t{node.meta['tensor_meta'].shape}")
-        fprint(
-            f"NodeOP:{node.op},\tTarget:{node.target},\tNodeName:{node.name},\tNodeArgs:{node.args}"
-        )
+        fprint(f"NodeOP:{node.op},\tTarget:{node.target},\tNodeName:{node.name},\tNodeArgs:{node.args}")
         # node_op_type = str(node.target).split(".")[-1]
         node_flops = None
 
@@ -157,17 +153,9 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
             node_flops = 0
         elif node.op == "call_function":
             # torch internal functions
-            key = (
-                str(node.target)
-                .split("at")[0]
-                .replace("<", "")
-                .replace(">", "")
-                .strip()
-            )
+            key = str(node.target).split("at")[0].replace("<", "").replace(">", "").strip()
             if key in count_map:
-                node_flops = count_map[key](
-                    input_shapes, output_shapes, *node.args, **node.kwargs
-                )
+                node_flops = count_map[key](input_shapes, output_shapes, *node.args, **node.kwargs)
             else:
                 missing_maps[key] = (node.op, key)
                 prRed(f"|{key}| is missing")
@@ -196,9 +184,7 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
                 print(f"weight_shape: None")
             else:
                 print(type(m))
-                print(
-                    f"weight_shape: {mod.state_dict()[node.target + '.weight'].shape}"
-                )
+                print(f"weight_shape: {mod.state_dict()[node.target + '.weight'].shape}")
 
         v_maps[str(node.name)] = node.meta["tensor_meta"].shape
         if node_flops is not None:
@@ -208,6 +194,7 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
 
     if len(missing_maps.keys()) > 0:
         from pprint import pprint
+
         print("Missing operators: ")
         pprint(missing_maps)
     return total_flops

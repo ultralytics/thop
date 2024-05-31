@@ -1,18 +1,20 @@
-import torch
 import numpy as np
+import torch
 from onnx import numpy_helper
+
 from thop.vision.basic_hooks import zero_ops
+
 from .calc_func import (
-    counter_matmul,
-    calculate_zero_ops,
+    calculate_avgpool,
     calculate_conv,
-    counter_mul,
     calculate_norm,
+    calculate_softmax,
+    calculate_zero_ops,
+    counter_div,
+    counter_matmul,
+    counter_mul,
     counter_pow,
     counter_sqrt,
-    counter_div,
-    calculate_softmax,
-    calculate_avgpool,
 )
 
 
@@ -65,20 +67,12 @@ def onnx_counter_conv(diction, node):
             group = attr.i
             # print(dim_dil)
     dim_input = diction[node.input[0]]
-    output_size = np.append(
-        dim_input[0 : -np.array(dim_kernel).size - 1], dim_weight[0]
-    )
+    output_size = np.append(dim_input[0 : -np.array(dim_kernel).size - 1], dim_weight[0])
     hw = np.array(dim_input[-np.array(dim_kernel).size :])
     for i in range(hw.size):
-        hw[i] = int(
-            (hw[i] + 2 * dim_pad[i] - dim_dil[i] * (dim_kernel[i] - 1) - 1)
-            / dim_stride[i]
-            + 1
-        )
+        hw[i] = int((hw[i] + 2 * dim_pad[i] - dim_dil[i] * (dim_kernel[i] - 1) - 1) / dim_stride[i] + 1)
     output_size = np.append(output_size, hw)
-    macs = calculate_conv(
-        dim_bias, np.prod(dim_kernel), np.prod(output_size), dim_weight[1], group
-    )
+    macs = calculate_conv(dim_bias, np.prod(dim_kernel), np.prod(output_size), dim_weight[1], group)
     output_name = node.output[0]
 
     # if '140' in diction:

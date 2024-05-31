@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-import os, sys
-import shutil
 import datetime
+import os
+import shutil
+import sys
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 from setuptools.command.install import install
 
 readme = open("README.md").read()

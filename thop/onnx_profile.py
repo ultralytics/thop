@@ -1,8 +1,9 @@
+import numpy as np
+import onnx
 import torch
 import torch.nn
-import onnx
 from onnx import numpy_helper
-import numpy as np
+
 from thop.vision.onnx_counter import onnx_operators
 
 
