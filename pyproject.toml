@@ -1,0 +1,70 @@
+# Ultralytics YOLO 🚀, AGPL-3.0 license
+# Publish pip package to PyPI https://pypi.org/project/ultralytics/ and Docs to https://docs.ultralytics.com
+#
+# Overview:
+# This `pyproject.toml` file manages the build, packaging, and distribution of the `thop` library. 
+# It defines essential project metadata, dependencies, and settings used to develop and deploy the library.
+# 
+# Key Sections:
+# - `[build-system]`: Specifies the build requirements and backend (e.g., setuptools, wheel).
+# - `[project]`: Includes details like name, version, description, authors, dependencies, and more.
+# - `[tool.setuptools.dynamic]`: Configures dynamic versioning for the project.
+# - `[tool.setuptools]`: Configures settings specific to the `setuptools` build backend.
+# 
+# Installation:
+# The `thop` library can be installed using the command: `pip install thop`
+# For development purposes, you can install the package in editable mode with: `pip install -e .`
+# This approach allows for real-time code modifications without the need for re-installation.
+# 
+# Documentation:
+# For comprehensive documentation and usage instructions, visit: https://github.com/ultralytics/thop
+
+[build-system]
+requires = ["setuptools>=57.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thop"
+version = "0.0.1"  # Placeholder version, needs to be dynamically set
+description = "A tool to count the FLOPs of PyTorch model."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+keywords = ["FLOPs", "PyTorch", "Model Analysis"]  # Optional
+authors = [
+    { name = "Ligeng Zhu", email = "ligeng.zhu+github@gmail.com" }
+]
+maintainers = [
+    { name = "Ligeng Zhu", email = "ligeng.zhu+github@gmail.com" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+    "torch",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Lyken17/pytorch-OpCounter/"
+
+[tool.setuptools]
+package-data = { "thop" = ["__version__.py"] }
+
+[tool.setuptools.dynamic]
+version = { attr = "thop.__version__.VERSION" }
