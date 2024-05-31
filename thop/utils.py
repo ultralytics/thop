@@ -6,6 +6,8 @@ COLOR_YELLOW = "93m"
 
 
 def colorful_print(fn_print, color=COLOR_RED):
+    """A decorator to print text in the specified terminal color by wrapping the given print function."""
+
     def actual_call(*args, **kwargs):
         print(f"\033[{color}", end="")
         fn_print(*args, **kwargs)
@@ -29,6 +31,7 @@ prYellow = colorful_print(print, color=COLOR_YELLOW)
 
 
 def clever_format(nums, format="%.2f"):
+    """Formats numerical values into a more readable string with units (K, M, G, T) based on their magnitude."""
     if not isinstance(nums, Iterable):
         nums = [nums]
     clever_nums = []

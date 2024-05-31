@@ -19,6 +19,7 @@ from .calc_func import (
 
 
 def onnx_counter_matmul(diction, node):
+    """Calculates multiply-accumulate operations and output size for matrix multiplication in an ONNX model node."""
     input1 = node.input[0]
     input2 = node.input[1]
     input1_dim = diction[input1]
@@ -30,6 +31,7 @@ def onnx_counter_matmul(diction, node):
 
 
 def onnx_counter_add(diction, node):
+    """Calculate multiply-accumulate operations (MACs), output size, and output name for ONNX addition nodes."""
     if np.array(diction[node.input[1]]).size >= np.array(diction[node.input[0]]).size:
         out_size = diction[node.input[1]]
     else:
@@ -42,7 +44,9 @@ def onnx_counter_add(diction, node):
 
 
 def onnx_counter_conv(diction, node):
-    # print(node)
+    """Calculates MACs, output size, and name for an ONNX convolution node based on input tensor dimensions and node
+    attributes.
+    """
     # bias,kernelsize,outputsize
     dim_bias = 0
     input_count = 0
@@ -81,7 +85,7 @@ def onnx_counter_conv(diction, node):
 
 
 def onnx_counter_constant(diction, node):
-    # print("constant",node)
+    """Calculate MACs, output size, and output name for a constant operation in an ONNX model."""
     macs = calculate_zero_ops()
     output_name = node.output[0]
     output_size = [1]
@@ -90,6 +94,7 @@ def onnx_counter_constant(diction, node):
 
 
 def onnx_counter_mul(diction, node):
+    """Calculate MACs, output size, and output name for a multiplication operation in an ONNX model."""
     if np.array(diction[node.input[1]]).size >= np.array(diction[node.input[0]]).size:
         input_size = diction[node.input[1]]
     else:
@@ -101,6 +106,7 @@ def onnx_counter_mul(diction, node):
 
 
 def onnx_counter_bn(diction, node):
+    """Calculates MACs, output size, and output name for batch normalization layers in an ONNX model."""
     input_size = diction[node.input[0]]
     macs = calculate_norm(np.prod(input_size))
     output_name = node.output[0]
@@ -109,6 +115,7 @@ def onnx_counter_bn(diction, node):
 
 
 def onnx_counter_relu(diction, node):
+    """Calculates MACs, output size, and output name for ReLU layers in an ONNX model."""
     input_size = diction[node.input[0]]
     macs = calculate_zero_ops()
     output_name = node.output[0]
@@ -120,6 +127,9 @@ def onnx_counter_relu(diction, node):
 
 
 def onnx_counter_reducemean(diction, node):
+    """Compute MACs, output size, and name for the ReduceMean ONNX node, adjusting dimensions based on the 'axes' and
+    'keepdims' attributes.
+    """
     keep_dim = 0
     for attr in node.attribute:
         if "axes" in attr.name:
@@ -139,6 +149,7 @@ def onnx_counter_reducemean(diction, node):
 
 
 def onnx_counter_sub(diction, node):
+    """Computes MACs, output size, and output name for a given ONNX node with specified input size."""
     input_size = diction[node.input[0]]
     macs = calculate_zero_ops()
     output_name = node.output[0]
@@ -147,6 +158,7 @@ def onnx_counter_sub(diction, node):
 
 
 def onnx_counter_pow(diction, node):
+    """Calculates MACs, output size, and output name for a given ONNX 'Pow' node with specified input size."""
     if np.array(diction[node.input[1]]).size >= np.array(diction[node.input[0]]).size:
         input_size = diction[node.input[1]]
     else:
@@ -158,6 +170,7 @@ def onnx_counter_pow(diction, node):
 
 
 def onnx_counter_sqrt(diction, node):
+    """Calculate MACs and output information for the SQRT operation in an ONNX node."""
     input_size = diction[node.input[0]]
     macs = counter_sqrt(np.prod(input_size))
     output_name = node.output[0]
@@ -166,6 +179,7 @@ def onnx_counter_sqrt(diction, node):
 
 
 def onnx_counter_div(diction, node):
+    """Calculate MACs and output information for the DIV operation in an ONNX node."""
     if np.array(diction[node.input[1]]).size >= np.array(diction[node.input[0]]).size:
         input_size = diction[node.input[1]]
     else:
@@ -177,6 +191,7 @@ def onnx_counter_div(diction, node):
 
 
 def onnx_counter_instance(diction, node):
+    """Calculate MACs, output size, and name for an ONNX node instance."""
     input_size = diction[node.input[0]]
     macs = calculate_norm(np.prod(input_size))
     output_name = node.output[0]
@@ -185,6 +200,7 @@ def onnx_counter_instance(diction, node):
 
 
 def onnx_counter_softmax(diction, node):
+    """Calculate MACs, output size, and name for an ONNX softmax node instance."""
     input_size = diction[node.input[0]]
     dim = node.attribute[0].i
     nfeatures = input_size[dim]
@@ -196,7 +212,7 @@ def onnx_counter_softmax(diction, node):
 
 
 def onnx_counter_pad(diction, node):
-    # # TODO add constant name and output real vector
+    """Compute memory access cost (MACs), output size, and output name for ONNX pad operation."""
     # if
     # if (np.array(diction[node.input[1]]).size >= np.array(diction[node.input[0]]).size):
     #     input_size = diction[node.input[1]]
@@ -210,7 +226,7 @@ def onnx_counter_pad(diction, node):
 
 
 def onnx_counter_averagepool(diction, node):
-    # TODO add support of ceil_mode and floor
+    """Calculate MACs and output size for an AveragePool ONNX operation based on input dimensions and attributes."""
     macs = calculate_avgpool(np.prod(diction[node.input[0]]))
     output_name = node.output[0]
     dim_pad = None
@@ -240,7 +256,7 @@ def onnx_counter_averagepool(diction, node):
 
 
 def onnx_counter_flatten(diction, node):
-    # print(node)
+    """Returns MACs, output size, and output name for an ONNX Flatten node."""
     macs = calculate_zero_ops()
     output_name = node.output[0]
     axis = node.attribute[0].i
@@ -251,7 +267,7 @@ def onnx_counter_flatten(diction, node):
 
 
 def onnx_counter_gemm(diction, node):
-    # print(node)
+    """Calculate multiply–accumulate operations (MACs), output size, and name for ONNX Gemm node."""
     # Compute Y = alpha * A' * B' + beta * C
     input_size = diction[node.input[0]]
     dim_weight = diction[node.input[1]]
@@ -264,7 +280,7 @@ def onnx_counter_gemm(diction, node):
 
 
 def onnx_counter_maxpool(diction, node):
-    # TODO add support of ceil_mode and floor
+    """Calculate MACs and output size for ONNX MaxPool operation based on input node attributes and dimensions."""
     # print(node)
     macs = calculate_zero_ops()
     output_name = node.output[0]
@@ -295,6 +311,7 @@ def onnx_counter_maxpool(diction, node):
 
 
 def onnx_counter_globalaveragepool(diction, node):
+    """Counts MACs and computes output size for a global average pooling layer in an ONNX model."""
     macs = calculate_zero_ops()
     output_name = node.output[0]
     input_size = diction[node.input[0]]
@@ -303,7 +320,7 @@ def onnx_counter_globalaveragepool(diction, node):
 
 
 def onnx_counter_concat(diction, node):
-    # print(node)
+    """Counts MACs and computes output size for a concatenation layer along a specified axis in an ONNX model."""
     # print(diction[node.input[0]])
     axis = node.attribute[0].i
     input_size = diction[node.input[0]]
@@ -317,6 +334,9 @@ def onnx_counter_concat(diction, node):
 
 
 def onnx_counter_clip(diction, node):
+    """Calculate MACs, output size, and output name for an ONNX node clip operation using provided dimensions and input
+    size.
+    """
     macs = calculate_zero_ops()
     output_name = node.output[0]
     input_size = diction[node.input[0]]

@@ -9,9 +9,11 @@ from thop.vision.onnx_counter import onnx_operators
 
 class OnnxProfile:
     def __init__(self):
+        """Initialize the OnnxProfile class with necessary imports for ONNX profiling."""
         pass
 
     def calculate_params(self, model: onnx.ModelProto):
+        """Calculate the total number of parameters in an ONNX model."""
         onnx_weights = model.graph.initializer
         params = 0
 
@@ -25,6 +27,7 @@ class OnnxProfile:
         return params
 
     def create_dict(self, weight, input, output):
+        """Create and return a dictionary mapping weight, input, and output names to their respective dimensions."""
         diction = {}
         for w in weight:
             dim = np.array(w.dims)
@@ -52,6 +55,9 @@ class OnnxProfile:
         return diction
 
     def nodes_counter(self, diction, node):
+        """Count nodes of a specific type in an ONNX graph, returning the count and associated node operation
+        details.
+        """
         if node.op_type not in onnx_operators:
             print("Sorry, we haven't add ", node.op_type, "into dictionary.")
             return 0, None, None
