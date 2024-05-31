@@ -1,4 +1,3 @@
-
 from thop.rnn_hooks import *
 from thop.vision.basic_hooks import *
 
@@ -56,8 +55,11 @@ register_hooks = {
     nn.SyncBatchNorm: count_normalization,
 }
 
+
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
-    """Profiles a PyTorch model's operations and parameters by applying custom or default hooks and returns total operations and parameters."""
+    """Profiles a PyTorch model's operations and parameters by applying custom or default hooks and returns total
+    operations and parameters.
+    """
     handler_collection = []
     types_collection = set()
     if custom_ops is None:
@@ -94,9 +96,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
                 print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed(
-                    f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params."
-                )
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
 
         if fn is not None:
             handler = m.register_forward_hook(fn)
@@ -177,9 +177,7 @@ def profile(
                 print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed(
-                    f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params."
-                )
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
 
         if fn is not None:
             handler_collection[m] = (
