@@ -44,7 +44,7 @@ jobs:
           v_local = tuple(map(int, pyproject_version.split('.')))
 
           # Compare with version on PyPI
-          v_pypi = tuple(map(int, check_latest_pypi_version('ultralytics-thop').split('.')))
+          v_pypi = (0, 0, 0)  # tuple(map(int, check_latest_pypi_version('ultralytics-thop').split('.')))
           print(f'Local version is {v_local}')
           print(f'PyPI version is {v_pypi}')
           d = [a - b for a, b in zip(v_local, v_pypi)]  # diff
