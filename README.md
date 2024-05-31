@@ -1,53 +1,79 @@
-# THOP: PyTorch-OpCounter
+<br>
+<img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320">
 
-## How to install
+# 🚀 THOP: PyTorch-OpCounter
 
-`pip install thop` (now continuously integrated on [Github actions](https://github.com/features/actions))
+Welcome to the [THOP](https://github.com/ultralytics/thop) repository, your comprehensive solution for profiling PyTorch models by computing the number of Multiply-Accumulate Operations (MACs) and parameters. This tool is essential for deep learning practitioners to evaluate model efficiency and performance.
 
-OR
+[![GitHub Actions](https://github.com/ultralytics/thop/actions/workflows/main.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/main.yml) [![PyPI version](https://badge.fury.io/py/thop.svg)](https://badge.fury.io/py/thop) <a href="https://github.com/ultralytics/thop/issues"><img alt="Issues" src="https://img.shields.io/github/issues/ultralytics/thop?logo=github&logoColor=white&label=Issues&color=blue"></a>
 
-`pip install --upgrade git+https://github.com/Lyken17/pytorch-OpCounter.git`
+## 📄 Description
 
-## How to use
+THOP offers an intuitive API to profile PyTorch models by calculating the number of MACs and parameters. This functionality is crucial for assessing the computational efficiency and memory footprint of deep learning models.
 
-- Basic usage
+## 📦 Installation
 
-    ```python
-    from torchvision.models import resnet50
-    from thop import profile
-    model = resnet50()
-    input = torch.randn(1, 3, 224, 224)
-    macs, params = profile(model, inputs=(input, ))
-    ```
+You can install THOP via pip:
 
-- Define the rule for 3rd party module.
+```bash
+pip install ultralytics-thop
+```
 
-    ```python
-    class YourModule(nn.Module):
-        # your definition
-    def count_your_model(model, x, y):
-        # your rule here
+Alternatively, install the latest version directly from GitHub:
 
-    input = torch.randn(1, 3, 224, 224)
-    macs, params = profile(model, inputs=(input, ),
-                            custom_ops={YourModule: count_your_model})
-    ```
+```bash
+pip install --upgrade git+https://github.com/ultralytics/thop.git
+```
 
-- Improve the output readability
+## 🛠 How to Use
 
-    Call `thop.clever_format` to give a better format of the output.
+### Basic Usage
 
-    ```python
-    from thop import clever_format
-    macs, params = clever_format([macs, params], "%.3f")
-    ```
+To profile a model, you can use the following example:
 
-## Results of Recent Models
+```python
+from torchvision.models import resnet50
+from thop import profile
+import torch
 
-The implementation are adapted from `torchvision`. Following results can be obtained using [benchmark/evaluate_famous_models.py](benchmark/evaluate_famous_models.py).
+model = resnet50()
+input = torch.randn(1, 3, 224, 224)
+macs, params = profile(model, inputs=(input, ))
+```
 
-<p align="center">
-<table>
+### Define Custom Rules for Third-Party Modules
+
+You can define custom rules for unsupported modules:
+
+```python
+import torch.nn as nn
+
+class YourModule(nn.Module):
+    # your definition
+    pass
+
+def count_your_model(model, x, y):
+    # your rule here
+    pass
+
+input = torch.randn(1, 3, 224, 224)
+macs, params = profile(model, inputs=(input, ), custom_ops={YourModule: count_your_model})
+```
+
+### Improve Output Readability
+
+Use `thop.clever_format` for a more readable output:
+
+```python
+from thop import clever_format
+macs, params = clever_format([macs, params], "%.3f")
+```
+
+## 📊 Results of Recent Models
+
+The following table presents the parameters and MACs for popular models. These results can be reproduced using the script `benchmark/evaluate_famous_models.py`.
+
+<table align="center">
 <tr>
 <td>
 
@@ -96,4 +122,33 @@ The implementation are adapted from `torchvision`. Following results can be obta
 
 </td>
 </tr>
-</p>
+</table>
+
+## 💡 Contribute
+
+We welcome community contributions to enhance THOP. Please check our [Contributing Guide](https://docs.ultralytics.com/help/contributing) for more details. Your feedback and suggestions are highly appreciated!
+
+## 📄 License
+
+THOP is licensed under the AGPL-3.0 License. For more information, see the [LICENSE](https://github.com/ultralytics/thop/blob/master/LICENSE) file.
+
+## 📮 Contact
+
+For bugs or feature requests, please open an issue on [GitHub Issues](https://github.com/ultralytics/thop/issues). Join our community on [Discord](https://ultralytics.com/discord) for discussions and support.
+
+<br>
+<div align="center">
+  <a href="https://github.com/ultralytics/thop"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-github.png" width="3%" alt="THOP GitHub"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.linkedin.com/company/pytorch/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-linkedin.png" width="3%" alt="PyTorch LinkedIn"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://twitter.com/pytorch"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%" alt="PyTorch Twitter"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://youtube.com/pytorch?sub_confirmation=1"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%" alt="PyTorch YouTube"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.tiktok.com/@pytorch"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%" alt="PyTorch TikTok"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.instagram.com/pytorch/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-instagram.png" width="3%" alt="PyTorch Instagram"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://discord.com/invite/pytorch"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="PyTorch Discord"></a>
+</div>
