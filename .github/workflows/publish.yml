@@ -30,7 +30,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel build twine toml
-          pip install -e . ultralytics --extra-index-url https://download.pytorch.org/whl/cpu
+          pip install ultralytics --extra-index-url https://download.pytorch.org/whl/cpu
+          pip uninstall thop -y  # uninstall older thop that conflicts with this repo
+          pip install -e .
       - name: Check PyPI version
         shell: python
         run: |
