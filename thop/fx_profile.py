@@ -13,15 +13,17 @@ if LooseVersion(torch.__version__) < LooseVersion("1.8.0"):
 
 
 def count_clamp(input_shapes, output_shapes):
+    """Ensures proper array sizes for tensors by clamping input and output shapes."""
     return 0
 
 
 def count_mul(input_shapes, output_shapes):
-    # element-wise
+    """Returns the number of elements in the first output shape."""
     return output_shapes[0].numel()
 
 
 def count_matmul(input_shapes, output_shapes):
+    """Calculates the total number of operations for a matrix multiplication given input and output shapes."""
     in_shape = input_shapes[0]
     out_shape = output_shapes[0]
     in_features = in_shape[-1]
@@ -30,6 +32,7 @@ def count_matmul(input_shapes, output_shapes):
 
 
 def count_fn_linear(input_shapes, output_shapes, *args, **kwargs):
+    """Calculates total operations (FLOPs) for a linear layer given input and output shapes."""
     mul_flops = count_matmul(input_shapes, output_shapes)
     if "bias" in kwargs:
         add_flops = output_shapes[0].numel()
@@ -40,6 +43,7 @@ from .vision.calc_func import calculate_conv
 
 
 def count_fn_conv2d(input_shapes, output_shapes, *args, **kwargs):
+    """Calculates total operations (FLOPs) for a 2D convolutional layer given input and output shapes."""
     inputs, weight, bias, stride, padding, dilation, groups = args
     if len(input_shapes) == 2:
         x_shape, k_shape = input_shapes
@@ -56,14 +60,17 @@ def count_fn_conv2d(input_shapes, output_shapes, *args, **kwargs):
 
 
 def count_nn_linear(module: nn.Module, input_shapes, output_shapes):
+    """Counts the FLOPs for a fully connected (linear) layer in a neural network module."""
     return count_matmul(input_shapes, output_shapes)
 
 
 def count_zero_ops(module: nn.Module, input_shapes, output_shapes, *args, **kwargs):
+    """Returns 0 for the given neural network module, input shapes, and output shapes."""
     return 0
 
 
 def count_nn_conv2d(module: nn.Conv2d, input_shapes, output_shapes):
+    """Calculates total operations for a 2D convolutional neural network layer in a given neural network module."""
     bias_op = 1 if module.bias is not None else 0
     out_shape = output_shapes[0]
 
@@ -75,6 +82,7 @@ def count_nn_conv2d(module: nn.Conv2d, input_shapes, output_shapes):
 
 
 def count_nn_bn2d(module: nn.BatchNorm2d, input_shapes, output_shapes):
+    """Calculate the total operations for a given nn.BatchNorm2d module based on its output shape."""
     assert len(output_shapes) == 1, "nn.BatchNorm2d should only have one output"
     y = output_shapes[0]
     # y = (x - mean) / \sqrt{var + e} * weight + bias
@@ -116,10 +124,12 @@ from .utils import prGreen, prRed, prYellow
 
 
 def null_print(*args, **kwargs):
+    """A no-op print function that takes any arguments without performing any actions."""
     return
 
 
 def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
+    """Profiles the given torch.nn Module to calculate total FLOPs for each operation and prints detailed node information if verbose."""
     gm: torch.fx.GraphModule = symbolic_trace(mod)
     g = gm.graph
     ShapeProp(gm).propagate(input)
@@ -204,16 +214,19 @@ if __name__ == "__main__":
 
     class MyOP(nn.Module):
         def forward(self, input):
+            """Performs forward pass on given input data."""
             return input / 1
 
     class MyModule(torch.nn.Module):
         def __init__(self):
+            """Initializes MyModule with two linear layers and a custom MyOP operator."""
             super().__init__()
             self.linear1 = torch.nn.Linear(5, 3)
             self.linear2 = torch.nn.Linear(5, 3)
             self.myop = MyOP()
 
         def forward(self, x):
+            """Applies two linear transformations to the input tensor, clamps the second, then combines and processes with MyOP operator."""
             out1 = self.linear1(x)
             out2 = self.linear2(x).clamp(min=0.0, max=1.0)
             return self.myop(out1 + out2)

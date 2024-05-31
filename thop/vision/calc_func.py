@@ -5,6 +5,7 @@ import torch
 
 
 def l_prod(in_list):
+    """Calculate the product of all elements in a list."""
     res = 1
     for _ in in_list:
         res *= _
@@ -12,6 +13,7 @@ def l_prod(in_list):
 
 
 def l_sum(in_list):
+    """Calculate the sum of all elements in a list."""
     res = 0
     for _ in in_list:
         res += _
@@ -19,6 +21,7 @@ def l_sum(in_list):
 
 
 def calculate_parameters(param_list):
+    """Calculate the total number of parameters in a list of tensors."""
     total_params = 0
     for p in param_list:
         total_params += torch.DoubleTensor([p.nelement()])
@@ -26,11 +29,12 @@ def calculate_parameters(param_list):
 
 
 def calculate_zero_ops():
+    """Return a tensor initialized to zero."""
     return torch.DoubleTensor([int(0)])
 
 
 def calculate_conv2d_flops(input_size: list, output_size: list, kernel_size: list, groups: int, bias: bool = False):
-    # n, out_c, oh, ow = output_size
+    """Calculate FLOPs for a Conv2D layer given input/output sizes, kernel size, groups, and bias flag."""
     # n, in_c, ih, iw = input_size
     # out_c, in_c, kh, kw = kernel_size
     in_c = input_size[1]
@@ -50,16 +54,18 @@ def calculate_norm(input_size):
 
 
 def calculate_relu_flops(input_size):
-    # x[x < 0] = 0
+    """Calculates the FLOPs for a ReLU activation function based on the input size."""
     return 0
 
 
 def calculate_relu(input_size: torch.Tensor):
+    """Convert an input tensor to a DoubleTensor with the same value."""
     warnings.warn("This API is being deprecated")
     return torch.DoubleTensor([int(input_size)])
 
 
 def calculate_softmax(batch_size, nfeatures):
+    """Calculate the number of FLOPs required for a softmax activation function based on batch size and number of features."""
     total_exp = nfeatures
     total_add = nfeatures - 1
     total_div = nfeatures
@@ -68,16 +74,19 @@ def calculate_softmax(batch_size, nfeatures):
 
 
 def calculate_avgpool(input_size):
+    """Calculate the average pooling size given the input size."""
     return torch.DoubleTensor([int(input_size)])
 
 
 def calculate_adaptive_avg(kernel_size, output_size):
+    """Calculate the number of operations for adaptive average pooling given kernel and output sizes."""
     total_div = 1
     kernel_op = kernel_size + total_div
     return torch.DoubleTensor([int(kernel_op * output_size)])
 
 
 def calculate_upsample(mode: str, output_size):
+    """Calculate the number of operations for upsample methods given the mode and output size."""
     total_ops = output_size
     if mode == "linear":
         total_ops *= 5
@@ -93,26 +102,32 @@ def calculate_upsample(mode: str, output_size):
 
 
 def calculate_linear(in_feature, num_elements):
+    """Calculate the linear operation count for an input feature and number of elements."""
     return torch.DoubleTensor([int(in_feature * num_elements)])
 
 
 def counter_matmul(input_size, output_size):
+    """Calculate the total number of operations for a matrix multiplication given input and output sizes."""
     input_size = np.array(input_size)
     output_size = np.array(output_size)
     return np.prod(input_size) * output_size[-1]
 
 
 def counter_mul(input_size):
+    """Calculate the total number of operations for a matrix multiplication given input and output sizes."""
     return input_size
 
 
 def counter_pow(input_size):
+    """Calculate the total number of scalar multiplications for a power operation given an input size."""
     return input_size
 
 
 def counter_sqrt(input_size):
+    """Calculate the total number of scalar operations for a square root operation given an input size."""
     return input_size
 
 
 def counter_div(input_size):
+    """Calculate the total number of scalar operations for a division operation given an input size."""
     return input_size

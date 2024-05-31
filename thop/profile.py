@@ -66,6 +66,7 @@ if LooseVersion(torch.__version__) >= LooseVersion("1.1.0"):
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
+    """Profiles a PyTorch model's operations and parameters by applying custom or default hooks and returns total operations and parameters."""
     handler_collection = []
     types_collection = set()
     if custom_ops is None:
@@ -162,6 +163,7 @@ def profile(
         verbose = True
 
     def add_hooks(m: nn.Module):
+        """Registers hooks to a neural network module to track total operations and parameters."""
         m.register_buffer("total_ops", torch.zeros(1, dtype=torch.float64))
         m.register_buffer("total_params", torch.zeros(1, dtype=torch.float64))
 
@@ -200,6 +202,7 @@ def profile(
         model(*inputs)
 
     def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
+        """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
         total_ops, total_params = module.total_ops.item(), 0
         ret_dict = {}
         for n, m in module.named_children():
