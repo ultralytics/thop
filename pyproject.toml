@@ -25,11 +25,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ultralytics-thop"
-version = "0.0.3"  # Placeholder version, needs to be dynamically set
-description = "A tool to count the FLOPs of PyTorch model."
+dynamic = ["version"]
+description = "Ultralytics THOP package for fast computation of PyTorch model FLOPs and parameters."
 readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "LICENSE" }
+license = { "text" = "AGPL-3.0" }
 keywords = ["FLOPs", "PyTorch", "Model Analysis"]  # Optional
 authors = [
     { name = "Ligeng Zhu", email = "ligeng.zhu+github@gmail.com" }
@@ -57,7 +57,6 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 dependencies = [
-    "packaging",
     "torch",
 ]
 
