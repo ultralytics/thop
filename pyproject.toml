@@ -61,7 +61,7 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/Lyken17/pytorch-OpCounter/"
+"Homepage" = "https://github.com/ultralytics/thop"
 
 [tool.setuptools]
 package-data = { "thop" = ["__version__.py"] }
