@@ -31,26 +31,32 @@ jobs:
         run: |
           python -m pip install --upgrade pip wheel build twine toml
           pip install ultralytics --extra-index-url https://download.pytorch.org/whl/cpu
+          pip uninstall -y thop
+          pip install -e .
       - name: Check PyPI version
         shell: python
         run: |
           import os
-          import toml
+          import thop
+          import ultralytics
           from ultralytics.utils.checks import check_latest_pypi_version
 
-          # Read version from pyproject.toml
-          with open('pyproject.toml', 'r') as file:
-              pyproject_version = toml.load(file)['project']['version']
-          v_local = tuple(map(int, pyproject_version.split('.')))
-
-          # Compare with version on PyPI
+          v_local = tuple(map(int, thop.__version__.split('.')))
           v_pypi = tuple(map(int, check_latest_pypi_version('ultralytics-thop').split('.')))
+          
           print(f'Local version is {v_local}')
           print(f'PyPI version is {v_pypi}')
+
           d = [a - b for a, b in zip(v_local, v_pypi)]  # diff
-          increment = True  # (d[0] == d[1] == 0) and (0 < d[2] < 3)  # only publish if patch version increments by 1 or 2
+
+          increment_patch = (d[0] == d[1] == 0) and (0 < d[2] < 3)  # publish if patch version increments by 1 or 2
+          increment_minor = (d[0] == 0) and (d[1] == 1) and v_local[2] == 0  # publish if minor version increments
+
+          increment = increment_patch or increment_minor or True
+
           os.system(f'echo "increment={increment}" >> $GITHUB_OUTPUT')
-          os.system(f'echo "version={pyproject_version}" >> $GITHUB_OUTPUT')
+          os.system(f'echo "version={thop.__version__}" >> $GITHUB_OUTPUT')
+
           if increment:
               print('Local version is higher than PyPI version. Publishing new version to PyPI ✅.')
         id: check_pypi
