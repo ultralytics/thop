@@ -1,6 +1,5 @@
 import numpy as np
 import onnx
-import torch
 import torch.nn
 from onnx import numpy_helper
 

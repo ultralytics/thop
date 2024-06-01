@@ -1,9 +1,7 @@
 from thop.rnn_hooks import *
 from thop.vision.basic_hooks import *
 
-# logger = logging.getLogger(__name__)
-# logger.setLevel(logging.INFO)
-from .utils import prGreen, prRed, prYellow
+from .utils import prRed
 
 default_dtype = torch.float64
 

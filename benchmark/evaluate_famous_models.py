@@ -25,4 +25,4 @@ for name in model_names:
         dsize = (1, 3, 299, 299)
     inputs = torch.randn(dsize).to(device)
     total_ops, total_params = profile(model, (inputs,), verbose=False)
-    print("%s | %.2f | %.2f" % (name, total_params / (1000**2), total_ops / (1000**3)))
+    print("%s | %.2f | %.2f" % (name, total_params / (1000 ** 2), total_ops / (1000 ** 3)))

@@ -120,7 +120,7 @@ missing_maps = {}
 from torch.fx import symbolic_trace
 from torch.fx.passes.shape_prop import ShapeProp
 
-from .utils import prGreen, prRed, prYellow
+from .utils import prRed, prYellow
 
 
 def null_print(*args, **kwargs):
@@ -193,7 +193,7 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
                 prRed(f"{key} is missing")
             print("module type:", type(m))
             if isinstance(m, zero_ops):
-                print(f"weight_shape: None")
+                print("weight_shape: None")
             else:
                 print(type(m))
                 print(f"weight_shape: {mod.state_dict()[node.target + '.weight'].shape}")
@@ -213,11 +213,11 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
 
 
 if __name__ == "__main__":
-
     class MyOP(nn.Module):
         def forward(self, input):
             """Performs forward pass on given input data."""
             return input / 1
+
 
     class MyModule(torch.nn.Module):
         def __init__(self):
@@ -234,6 +234,7 @@ if __name__ == "__main__":
             out1 = self.linear1(x)
             out2 = self.linear2(x).clamp(min=0.0, max=1.0)
             return self.myop(out1 + out2)
+
 
     net = MyModule()
     data = th.randn(20, 5)

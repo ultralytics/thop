@@ -11,16 +11,17 @@ However, the application in real world is far more complex. Let's consider a mat
 ```python
 for i in range(m):
     for j in range(n):
-        C[i][j] += A[i][j] * B[j] # one mul-add
+        C[i][j] += A[i][j] * B[j]  # one mul-add
 ```
 
 It would be `mn` `MACs` and `2mn` `FLOPs`. But such implementation is slow and parallelization is necessary to run faster
 
 ```python
 for i in range(m):
-  parallelfor j in range(n):
-      d[j] = A[i][j] * B[j] # one mul
-  C[i][j] = sum(d) # n adds
+    parallelfor
+    j in range(n):
+    d[j] = A[i][j] * B[j]  # one mul
+C[i][j] = sum(d)  # n adds
 ```
 
 Then the number of `MACs` is no longer `mn` .
