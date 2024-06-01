@@ -85,9 +85,7 @@ def count_nn_bn2d(module: nn.BatchNorm2d, input_shapes, output_shapes):
     """Calculate the total operations for a given nn.BatchNorm2d module based on its output shape."""
     assert len(output_shapes) == 1, "nn.BatchNorm2d should only have one output"
     y = output_shapes[0]
-    # y = (x - mean) / \sqrt{var + e} * weight + bias
-    total_ops = 2 * y.numel()
-    return total_ops
+    return 2 * y.numel()
 
 
 zero_ops = (

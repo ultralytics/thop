@@ -66,7 +66,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         verbose = True
 
     def add_hooks(m):
-        if len(list(m.children())) > 0:
+        if list(m.children()):
             return
 
         if hasattr(m, "total_ops") or hasattr(m, "total_params"):
@@ -112,7 +112,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
     total_ops = 0
     total_params = 0
     for m in model.modules():
-        if len(list(m.children())) > 0:  # skip for non-leaf module
+        if list(m.children()):  # skip for non-leaf module
             continue
         total_ops += m.total_ops
         total_params += m.total_params
@@ -127,7 +127,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
 
     # remove temporal buffers
     for n, m in model.named_modules():
-        if len(list(m.children())) > 0:
+        if list(m.children()):
             continue
         if "total_ops" in m._buffers:
             m._buffers.pop("total_ops")
