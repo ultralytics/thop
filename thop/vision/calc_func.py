@@ -14,23 +14,17 @@ def l_prod(in_list):
 
 def l_sum(in_list):
     """Calculate the sum of all elements in a list."""
-    res = 0
-    for _ in in_list:
-        res += _
-    return res
+    return sum(in_list)
 
 
 def calculate_parameters(param_list):
     """Calculate the total number of parameters in a list of tensors."""
-    total_params = 0
-    for p in param_list:
-        total_params += torch.DoubleTensor([p.nelement()])
-    return total_params
+    return sum(torch.DoubleTensor([p.nelement()]) for p in param_list)
 
 
 def calculate_zero_ops():
     """Return a tensor initialized to zero."""
-    return torch.DoubleTensor([int(0)])
+    return torch.DoubleTensor([0])
 
 
 def calculate_conv2d_flops(input_size: list, output_size: list, kernel_size: list, groups: int, bias: bool = False):
@@ -90,14 +84,12 @@ def calculate_adaptive_avg(kernel_size, output_size):
 def calculate_upsample(mode: str, output_size):
     """Calculate the number of operations for upsample methods given the mode and output size."""
     total_ops = output_size
-    if mode == "linear":
-        total_ops *= 5
+    if mode == "bicubic":
+        total_ops *= 224 + 35
     elif mode == "bilinear":
         total_ops *= 11
-    elif mode == "bicubic":
-        ops_solve_A = 224  # 128 muls + 96 adds
-        ops_solve_p = 35  # 16 muls + 12 adds + 4 muls + 3 adds
-        total_ops *= ops_solve_A + ops_solve_p
+    elif mode == "linear":
+        total_ops *= 5
     elif mode == "trilinear":
         total_ops *= 13 * 2 + 5
     return torch.DoubleTensor([int(total_ops)])

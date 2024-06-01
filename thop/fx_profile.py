@@ -85,9 +85,7 @@ def count_nn_bn2d(module: nn.BatchNorm2d, input_shapes, output_shapes):
     """Calculate the total operations for a given nn.BatchNorm2d module based on its output shape."""
     assert len(output_shapes) == 1, "nn.BatchNorm2d should only have one output"
     y = output_shapes[0]
-    # y = (x - mean) / \sqrt{var + e} * weight + bias
-    total_ops = 2 * y.numel()
-    return total_ops
+    return 2 * y.numel()
 
 
 zero_ops = (
@@ -120,7 +118,7 @@ missing_maps = {}
 from torch.fx import symbolic_trace
 from torch.fx.passes.shape_prop import ShapeProp
 
-from .utils import prGreen, prRed, prYellow
+from .utils import prRed, prYellow
 
 
 def null_print(*args, **kwargs):
@@ -193,7 +191,7 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
                 prRed(f"{key} is missing")
             print("module type:", type(m))
             if isinstance(m, zero_ops):
-                print(f"weight_shape: None")
+                print("weight_shape: None")
             else:
                 print(type(m))
                 print(f"weight_shape: {mod.state_dict()[node.target + '.weight'].shape}")

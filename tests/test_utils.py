@@ -1,5 +1,3 @@
-import pytest
-
 from thop import utils
 
 

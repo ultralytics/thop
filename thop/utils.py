@@ -20,15 +20,6 @@ prRed = colorful_print(print, color=COLOR_RED)
 prGreen = colorful_print(print, color=COLOR_GREEN)
 prYellow = colorful_print(print, color=COLOR_YELLOW)
 
-# def prRed(skk):
-#     print("\033[91m{}\033[00m".format(skk))
-
-# def prGreen(skk):
-#     print("\033[92m{}\033[00m".format(skk))
-
-# def prYellow(skk):
-#     print("\033[93m{}\033[00m".format(skk))
-
 
 def clever_format(nums, format="%.2f"):
     """Formats numerical values into a more readable string with units (K, M, G, T) based on their magnitude."""
@@ -48,9 +39,7 @@ def clever_format(nums, format="%.2f"):
         else:
             clever_nums.append(format % num + "B")
 
-    clever_nums = clever_nums[0] if len(clever_nums) == 1 else (*clever_nums,)
-
-    return clever_nums
+    return clever_nums[0] if len(clever_nums) == 1 else (*clever_nums,)
 
 
 if __name__ == "__main__":

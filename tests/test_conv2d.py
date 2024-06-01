@@ -1,7 +1,5 @@
-import pytest
 import torch
 import torch.nn as nn
-from jinja2 import StrictUndefined
 
 from thop import profile
 
@@ -22,7 +20,7 @@ class TestUtils:
         _, _, oh, ow = out.shape
 
         flops, params = profile(net, inputs=(data,))
-        assert flops == 810000, f"{flops} v.s. {810000}"
+        assert flops == 810000, f"{flops} v.s. 810000"
 
     def test_conv2d(self):
         """Tests a Conv2D layer with specific input dimensions, kernel size, stride, padding, dilation, and groups."""
@@ -37,11 +35,11 @@ class TestUtils:
         _, _, oh, ow = out.shape
 
         flops, params = profile(net, inputs=(data,))
-        assert flops == 810000, f"{flops} v.s. {810000}"
+        assert flops == 810000, f"{flops} v.s. 810000"
 
     def test_conv2d_random(self):
         """Test Conv2D layer with random parameters and validate the computed FLOPs and parameters using 'profile'."""
-        for i in range(10):
+        for _ in range(10):
             out_c, kh, kw = torch.randint(1, 20, (3,)).tolist()
             n, in_c, ih, iw = torch.randint(1, 20, (4,)).tolist()  # torch.randint(1, 10, (4,)).tolist()
             ih += kh
