@@ -103,13 +103,12 @@ def count_rnn(m: nn.RNN, x, y):
     if isinstance(x[0], PackedSequence):
         batch_size = torch.max(x[0].batch_sizes)
         num_steps = x[0].batch_sizes.size(0)
+    elif m.batch_first:
+        batch_size = x[0].size(0)
+        num_steps = x[0].size(1)
     else:
-        if m.batch_first:
-            batch_size = x[0].size(0)
-            num_steps = x[0].size(1)
-        else:
-            batch_size = x[0].size(1)
-            num_steps = x[0].size(0)
+        batch_size = x[0].size(1)
+        num_steps = x[0].size(0)
 
     total_ops = 0
     if m.bidirectional:
@@ -117,12 +116,12 @@ def count_rnn(m: nn.RNN, x, y):
     else:
         total_ops += _count_rnn_cell(input_size, hidden_size, bias)
 
-    for i in range(num_layers - 1):
-        if m.bidirectional:
-            total_ops += _count_rnn_cell(hidden_size * 2, hidden_size, bias) * 2
-        else:
-            total_ops += _count_rnn_cell(hidden_size, hidden_size, bias)
-
+    for _ in range(num_layers - 1):
+        total_ops += (
+            _count_rnn_cell(hidden_size * 2, hidden_size, bias) * 2
+            if m.bidirectional
+            else _count_rnn_cell(hidden_size, hidden_size, bias)
+        )
     # time unroll
     total_ops *= num_steps
     # batch_size
@@ -141,13 +140,12 @@ def count_gru(m: nn.GRU, x, y):
     if isinstance(x[0], PackedSequence):
         batch_size = torch.max(x[0].batch_sizes)
         num_steps = x[0].batch_sizes.size(0)
+    elif m.batch_first:
+        batch_size = x[0].size(0)
+        num_steps = x[0].size(1)
     else:
-        if m.batch_first:
-            batch_size = x[0].size(0)
-            num_steps = x[0].size(1)
-        else:
-            batch_size = x[0].size(1)
-            num_steps = x[0].size(0)
+        batch_size = x[0].size(1)
+        num_steps = x[0].size(0)
 
     total_ops = 0
     if m.bidirectional:
@@ -155,12 +153,12 @@ def count_gru(m: nn.GRU, x, y):
     else:
         total_ops += _count_gru_cell(input_size, hidden_size, bias)
 
-    for i in range(num_layers - 1):
-        if m.bidirectional:
-            total_ops += _count_gru_cell(hidden_size * 2, hidden_size, bias) * 2
-        else:
-            total_ops += _count_gru_cell(hidden_size, hidden_size, bias)
-
+    for _ in range(num_layers - 1):
+        total_ops += (
+            _count_gru_cell(hidden_size * 2, hidden_size, bias) * 2
+            if m.bidirectional
+            else _count_gru_cell(hidden_size, hidden_size, bias)
+        )
     # time unroll
     total_ops *= num_steps
     # batch_size
@@ -181,13 +179,12 @@ def count_lstm(m: nn.LSTM, x, y):
     if isinstance(x[0], PackedSequence):
         batch_size = torch.max(x[0].batch_sizes)
         num_steps = x[0].batch_sizes.size(0)
+    elif m.batch_first:
+        batch_size = x[0].size(0)
+        num_steps = x[0].size(1)
     else:
-        if m.batch_first:
-            batch_size = x[0].size(0)
-            num_steps = x[0].size(1)
-        else:
-            batch_size = x[0].size(1)
-            num_steps = x[0].size(0)
+        batch_size = x[0].size(1)
+        num_steps = x[0].size(0)
 
     total_ops = 0
     if m.bidirectional:
@@ -195,12 +192,12 @@ def count_lstm(m: nn.LSTM, x, y):
     else:
         total_ops += _count_lstm_cell(input_size, hidden_size, bias)
 
-    for i in range(num_layers - 1):
-        if m.bidirectional:
-            total_ops += _count_lstm_cell(hidden_size * 2, hidden_size, bias) * 2
-        else:
-            total_ops += _count_lstm_cell(hidden_size, hidden_size, bias)
-
+    for _ in range(num_layers - 1):
+        total_ops += (
+            _count_lstm_cell(hidden_size * 2, hidden_size, bias) * 2
+            if m.bidirectional
+            else _count_lstm_cell(hidden_size, hidden_size, bias)
+        )
     # time unroll
     total_ops *= num_steps
     # batch_size

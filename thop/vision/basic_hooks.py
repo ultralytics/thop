@@ -137,7 +137,7 @@ def count_upsample(m, x, y):
         "bilinear",
         "bicubic",
     ):  # "trilinear"
-        logging.warning("mode %s is not implemented yet, take it a zero op" % m.mode)
+        logging.warning(f"mode {m.mode} is not implemented yet, take it a zero op")
         m.total_ops += 0
     else:
         x = x[0]
