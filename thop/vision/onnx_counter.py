@@ -67,8 +67,8 @@ def onnx_counter_conv(diction, node):
             group = attr.i
             # print(dim_dil)
     dim_input = diction[node.input[0]]
-    output_size = np.append(dim_input[0: -np.array(dim_kernel).size - 1], dim_weight[0])
-    hw = np.array(dim_input[-np.array(dim_kernel).size:])
+    output_size = np.append(dim_input[0 : -np.array(dim_kernel).size - 1], dim_weight[0])
+    hw = np.array(dim_input[-np.array(dim_kernel).size :])
     for i in range(hw.size):
         hw[i] = int((hw[i] + 2 * dim_pad[i] - dim_dil[i] * (dim_kernel[i] - 1) - 1) / dim_stride[i] + 1)
     output_size = np.append(output_size, hw)
@@ -238,15 +238,15 @@ def onnx_counter_averagepool(diction, node):
             dim_dil = attr.ints
             # print(dim_dil)
     dim_input = diction[node.input[0]]
-    hw = dim_input[-np.array(dim_kernel).size:]
+    hw = dim_input[-np.array(dim_kernel).size :]
     if dim_pad is not None:
         for i in range(hw.size):
             hw[i] = int((hw[i] + 2 * dim_pad[i] - dim_kernel[i]) / dim_stride[i] + 1)
-        output_size = np.append(dim_input[0: -np.array(dim_kernel).size], hw)
+        output_size = np.append(dim_input[0 : -np.array(dim_kernel).size], hw)
     else:
         for i in range(hw.size):
             hw[i] = int((hw[i] - dim_kernel[i]) / dim_stride[i] + 1)
-        output_size = np.append(dim_input[0: -np.array(dim_kernel).size], hw)
+        output_size = np.append(dim_input[0 : -np.array(dim_kernel).size], hw)
     # print(macs, output_size, output_name)
     return macs, output_size, output_name
 
@@ -293,15 +293,15 @@ def onnx_counter_maxpool(diction, node):
             dim_dil = attr.ints
             # print(dim_dil)
     dim_input = diction[node.input[0]]
-    hw = dim_input[-np.array(dim_kernel).size:]
+    hw = dim_input[-np.array(dim_kernel).size :]
     if dim_pad is not None:
         for i in range(hw.size):
             hw[i] = int((hw[i] + 2 * dim_pad[i] - dim_kernel[i]) / dim_stride[i] + 1)
-        output_size = np.append(dim_input[0: -np.array(dim_kernel).size], hw)
+        output_size = np.append(dim_input[0 : -np.array(dim_kernel).size], hw)
     else:
         for i in range(hw.size):
             hw[i] = int((hw[i] - dim_kernel[i]) / dim_stride[i] + 1)
-        output_size = np.append(dim_input[0: -np.array(dim_kernel).size], hw)
+        output_size = np.append(dim_input[0 : -np.array(dim_kernel).size], hw)
     # print(macs, output_size, output_name)
     return macs, output_size, output_name
 

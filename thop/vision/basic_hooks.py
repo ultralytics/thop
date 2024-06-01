@@ -132,10 +132,10 @@ def count_adap_avgpool(m, x, y):
 def count_upsample(m, x, y):
     """Update the total operations counter in the given module for supported upsampling modes."""
     if m.mode not in (
-            "nearest",
-            "linear",
-            "bilinear",
-            "bicubic",
+        "nearest",
+        "linear",
+        "bilinear",
+        "bicubic",
     ):  # "trilinear"
         logging.warning("mode %s is not implemented yet, take it a zero op" % m.mode)
         m.total_ops += 0
