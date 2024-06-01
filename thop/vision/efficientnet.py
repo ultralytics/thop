@@ -1,3 +1,1 @@
-
-
 register_hooks = {}

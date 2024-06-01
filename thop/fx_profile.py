@@ -211,11 +211,11 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
 
 
 if __name__ == "__main__":
+
     class MyOP(nn.Module):
         def forward(self, input):
             """Performs forward pass on given input data."""
             return input / 1
-
 
     class MyModule(torch.nn.Module):
         def __init__(self):
@@ -232,7 +232,6 @@ if __name__ == "__main__":
             out1 = self.linear1(x)
             out2 = self.linear2(x).clamp(min=0.0, max=1.0)
             return self.myop(out1 + out2)
-
 
     net = MyModule()
     data = th.randn(20, 5)
