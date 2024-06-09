@@ -10,9 +10,7 @@ multiply_adds = 1
 
 def count_parameters(m, x, y):
     """Calculate and update the total number of parameters in a given PyTorch model."""
-    total_params = 0
-    for p in m.parameters():
-        total_params += torch.DoubleTensor([p.numel()])
+    total_params = sum(torch.DoubleTensor([p.numel()]) for p in m.parameters())
     m.total_params[0] = calculate_parameters(m.parameters())
 
 
