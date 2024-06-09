@@ -24,7 +24,7 @@ models = {
     "stacked-BiLSTM": nn.Sequential(nn.LSTM(input_size, hidden_size, bidirectional=True, num_layers=4)),
 }
 
-print("{} | {} | {}".format("Model", "Params(M)", "FLOPs(G)"))
+print("Model | Params(M) | FLOPs(G)")
 print("---|---|---")
 
 for name, model in models.items():

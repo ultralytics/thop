@@ -11,13 +11,10 @@ model_names = sorted(
     and callable(models.__dict__[name])
 )
 
-print("%s | %s | %s" % ("Model", "Params(M)", "FLOPs(G)"))
+print("Model | Params(M) | FLOPs(G)")
 print("---|---|---")
 
-device = "cpu"
-if torch.cuda.is_available():
-    device = "cuda"
-
+device = "cuda" if torch.cuda.is_available() else "cpu"
 for name in model_names:
     try:
         model = models.__dict__[name]().to(device)

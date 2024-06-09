@@ -148,7 +148,6 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
         node_flops = None
 
         input_shapes = []
-        output_shapes = []
         fprint("input_shape:", end="\t")
         for arg in node.args:
             if str(arg) not in v_maps:
@@ -157,8 +156,7 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
             input_shapes.append(v_maps[str(arg)])
         fprint()
         fprint(f"output_shape:\t{node.meta['tensor_meta'].shape}")
-        output_shapes.append(node.meta["tensor_meta"].shape)
-
+        output_shapes = [node.meta["tensor_meta"].shape]
         if node.op in ["output", "placeholder"]:
             node_flops = 0
         elif node.op == "call_function":
@@ -194,7 +192,7 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
                 print("weight_shape: None")
             else:
                 print(type(m))
-                print(f"weight_shape: {mod.state_dict()[node.target + '.weight'].shape}")
+                print(f"weight_shape: {mod.state_dict()[f'{node.target}.weight'].shape}")
 
         v_maps[str(node.name)] = node.meta["tensor_meta"].shape
         if node_flops is not None:

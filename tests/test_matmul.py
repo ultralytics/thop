@@ -15,7 +15,7 @@ class TestUtils:
 
     def test_matmul_case2(self):
         """Tests matrix multiplication to assert FLOPs and parameters of nn.Linear layer using random dimensions."""
-        for i in range(10):
+        for _ in range(10):
             n, in_c, out_c = torch.randint(1, 500, (3,)).tolist()
             net = nn.Linear(in_c, out_c)
             flops, params = profile(net, inputs=(torch.randn(n, in_c),))
