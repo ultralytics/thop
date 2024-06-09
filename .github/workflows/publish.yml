@@ -40,26 +40,27 @@ jobs:
           import thop
           import ultralytics
           from ultralytics.utils.checks import check_latest_pypi_version
-
           v_local = tuple(map(int, thop.__version__.split('.')))
           v_pypi = tuple(map(int, check_latest_pypi_version('ultralytics-thop').split('.')))
-          
           print(f'Local version is {v_local}')
           print(f'PyPI version is {v_pypi}')
-
           d = [a - b for a, b in zip(v_local, v_pypi)]  # diff
-
           increment_patch = (d[0] == d[1] == 0) and (0 < d[2] < 3)  # publish if patch version increments by 1 or 2
           increment_minor = (d[0] == 0) and (d[1] == 1) and v_local[2] == 0  # publish if minor version increments
-
           increment = increment_patch or increment_minor
-
           os.system(f'echo "increment={increment}" >> $GITHUB_OUTPUT')
           os.system(f'echo "version={thop.__version__}" >> $GITHUB_OUTPUT')
-
           if increment:
               print('Local version is higher than PyPI version. Publishing new version to PyPI ✅.')
         id: check_pypi
+      - name: Publish new tag
+        if: steps.check_pypi.outputs.increment == 'True'
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          git config --global user.name "UltralyticsAssistant"
+          git config --global user.email "web@ultralytics.com"
+          git tag -a "v${{ steps.check_pypi.outputs.version }}" -m "$COMMIT_MESSAGE"
+          git push origin "v${{ steps.check_pypi.outputs.version }}"
       - name: Publish to PyPI
         continue-on-error: true
         if: (github.event_name == 'push' || github.event.inputs.pypi == 'true')  && steps.check_pypi.outputs.increment == 'True'
