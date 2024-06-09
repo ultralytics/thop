@@ -40,7 +40,7 @@ import torch
 
 model = resnet50()
 input = torch.randn(1, 3, 224, 224)
-macs, params = profile(model, inputs=(input, ))
+macs, params = profile(model, inputs=(input,))
 ```
 
 ### Define Custom Rules for Third-Party Modules
@@ -50,16 +50,19 @@ You can define custom rules for unsupported modules:
 ```python
 import torch.nn as nn
 
+
 class YourModule(nn.Module):
     # your definition
     pass
+
 
 def count_your_model(model, x, y):
     # your rule here
     pass
 
+
 input = torch.randn(1, 3, 224, 224)
-macs, params = profile(model, inputs=(input, ), custom_ops={YourModule: count_your_model})
+macs, params = profile(model, inputs=(input,), custom_ops={YourModule: count_your_model})
 ```
 
 ### Improve Output Readability
@@ -68,6 +71,7 @@ Use `thop.clever_format` for a more readable output:
 
 ```python
 from thop import clever_format
+
 macs, params = clever_format([macs, params], "%.3f")
 ```
 
