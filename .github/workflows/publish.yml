@@ -56,10 +56,9 @@ jobs:
       - name: Publish new tag
         if: steps.check_pypi.outputs.increment == 'True'
         run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           git config --global user.name "UltralyticsAssistant"
           git config --global user.email "web@ultralytics.com"
-          git tag -a "v${{ steps.check_pypi.outputs.version }}" -m "$COMMIT_MESSAGE"
+          git tag -a "v${{ steps.check_pypi.outputs.version }}" -m "$(git log -1 --pretty=%B)"  # i.e. "v0.1.2 commit message"
           git push origin "v${{ steps.check_pypi.outputs.version }}"
       - name: Publish to PyPI
         continue-on-error: true
