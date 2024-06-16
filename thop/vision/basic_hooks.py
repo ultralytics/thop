@@ -10,7 +10,7 @@ multiply_adds = 1
 
 def count_parameters(m, x, y):
     """Calculate and update the total number of parameters in a given PyTorch model."""
-    total_params = sum(torch.DoubleTensor([p.numel()]) for p in m.parameters())
+    sum(torch.DoubleTensor([p.numel()]) for p in m.parameters())
     m.total_params[0] = calculate_parameters(m.parameters())
 
 
@@ -23,8 +23,7 @@ def count_convNd(m: _ConvNd, x, y: torch.Tensor):
     """Calculate and add the number of convolutional operations (FLOPs) to the model's total operations count."""
     x = x[0]
 
-    kernel_ops = torch.zeros(m.weight.size()[2:]).numel()  # Kw x Kh
-    bias_ops = 1 if m.bias is not None else 0
+    torch.zeros(m.weight.size()[2:]).numel()  # Kw x Kh
 
     m.total_ops += calculate_conv2d_flops(
         input_size=list(x.shape),
@@ -96,7 +95,7 @@ def count_relu(m, x, y):
     """Calculate and update the total operation counts for a ReLU layer."""
     x = x[0]
 
-    nelements = x.numel()
+    x.numel()
 
     m.total_ops += calculate_relu_flops(list(x.shape))
 

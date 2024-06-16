@@ -9,8 +9,8 @@ class TestUtils:
         """Tests the ReLU activation function to ensure it has zero FLOPs and checks parameter count using THOP
         profiling.
         """
-        n, in_c, out_c = 1, 100, 200
-        data = torch.randn(n, in_c)
+        n, in_c, _out_c = 1, 100, 200
+        torch.randn(n, in_c)
         net = nn.ReLU()
         flops, params = profile(net, inputs=(torch.randn(n, in_c),))
         print(flops, params)
