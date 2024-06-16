@@ -33,10 +33,10 @@ def count_matmul(input_shapes, output_shapes):
 
 def count_fn_linear(input_shapes, output_shapes, *args, **kwargs):
     """Calculates total operations (FLOPs) for a linear layer given input and output shapes."""
-    mul_flops = count_matmul(input_shapes, output_shapes)
+    flops = count_matmul(input_shapes, output_shapes)
     if "bias" in kwargs:
-        add_flops = output_shapes[0].numel()
-    return mul_flops
+        flops += output_shapes[0].numel()
+    return flops
 
 
 from .vision.calc_func import calculate_conv
@@ -131,7 +131,6 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
     information if verbose.
     """
     gm: torch.fx.GraphModule = symbolic_trace(mod)
-    g = gm.graph
     ShapeProp(gm).propagate(input)
 
     fprint = null_print
