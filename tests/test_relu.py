@@ -10,7 +10,6 @@ class TestUtils:
         profiling.
         """
         n, in_c, _out_c = 1, 100, 200
-        torch.randn(n, in_c)
         net = nn.ReLU()
         flops, params = profile(net, inputs=(torch.randn(n, in_c),))
         print(flops, params)
