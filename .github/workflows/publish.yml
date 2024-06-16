@@ -47,7 +47,8 @@ jobs:
           d = [a - b for a, b in zip(v_local, v_pypi)]  # diff
           increment_patch = (d[0] == d[1] == 0) and (0 < d[2] < 3)  # publish if patch version increments by 1 or 2
           increment_minor = (d[0] == 0) and (d[1] == 1) and v_local[2] == 0  # publish if minor version increments
-          increment = increment_patch or increment_minor
+          increment_major = (d[0] <= 2)
+          increment = increment_patch or increment_minor or increment_major
           os.system(f'echo "increment={increment}" >> $GITHUB_OUTPUT')
           os.system(f'echo "version={thop.__version__}" >> $GITHUB_OUTPUT')
           if increment:
