@@ -94,9 +94,6 @@ def count_prelu(m, x, y):
 def count_relu(m, x, y):
     """Calculate and update the total operation counts for a ReLU layer."""
     x = x[0]
-
-    x.numel()
-
     m.total_ops += calculate_relu_flops(list(x.shape))
 
 
