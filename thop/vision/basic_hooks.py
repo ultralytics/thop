@@ -21,9 +21,7 @@ def zero_ops(m, x, y):
 def count_convNd(m: _ConvNd, x, y: torch.Tensor):
     """Calculate and add the number of convolutional operations (FLOPs) to the model's total operations count."""
     x = x[0]
-
-    torch.zeros(m.weight.size()[2:]).numel()  # Kw x Kh
-
+    
     m.total_ops += calculate_conv2d_flops(
         input_size=list(x.shape),
         output_size=list(y.shape),
