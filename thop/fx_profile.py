@@ -33,10 +33,10 @@ def count_matmul(input_shapes, output_shapes):
 
 def count_fn_linear(input_shapes, output_shapes, *args, **kwargs):
     """Calculates total operations (FLOPs) for a linear layer given input and output shapes."""
-    mul_flops = count_matmul(input_shapes, output_shapes)
+    flops = count_matmul(input_shapes, output_shapes)
     if "bias" in kwargs:
-        output_shapes[0].numel()
-    return mul_flops
+        flops += output_shapes[0].numel()
+    return flops
 
 
 from .vision.calc_func import calculate_conv
