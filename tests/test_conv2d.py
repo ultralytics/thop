@@ -1,14 +1,11 @@
 import torch
 import torch.nn as nn
-
 from thop import profile
 
 
 class TestUtils:
     def test_conv2d_no_bias(self):
-        """Tests a 2D convolutional layer without bias using THOP profiling with predefined input dimensions and
-        convolution parameters.
-        """
+        """Tests a 2D Conv layer without bias using THOP profiling on predefined input dimensions and parameters."""
         n, in_c, ih, iw = 1, 3, 32, 32  # torch.randint(1, 10, (4,)).tolist()
         out_c, kh, kw = 12, 5, 5
         s, p, d, g = 1, 1, 1, 1
@@ -23,7 +20,7 @@ class TestUtils:
         assert flops == 810000, f"{flops} v.s. 810000"
 
     def test_conv2d(self):
-        """Tests a Conv2D layer with specific input dimensions, kernel size, stride, padding, dilation, and groups."""
+        """Tests Conv2D layer with bias, profiling FLOPs and params for specific input dimensions and layer configs."""
         n, in_c, ih, iw = 1, 3, 32, 32  # torch.randint(1, 10, (4,)).tolist()
         out_c, kh, kw = 12, 5, 5
         s, p, d, g = 1, 1, 1, 1

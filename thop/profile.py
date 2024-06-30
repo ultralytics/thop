@@ -55,9 +55,7 @@ register_hooks = {
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
-    """Profiles a PyTorch model's operations and parameters by applying custom or default hooks and returns total
-    operations and parameters.
-    """
+    """Profiles a PyTorch model's operations and parameters, applying either custom or default hooks."""
     handler_collection = []
     types_collection = set()
     if custom_ops is None:
@@ -145,7 +143,7 @@ def profile(
     ret_layer_info=False,
     report_missing=False,
 ):
-    """Profiles a PyTorch model, returning total operations and parameters, with optional layer-wise details."""
+    """Profiles a PyTorch model, returning total operations, parameters, and optionally layer-wise details."""
     handler_collection = {}
     types_collection = set()
     if custom_ops is None:
