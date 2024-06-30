@@ -145,6 +145,7 @@ def profile(
     ret_layer_info=False,
     report_missing=False,
 ):
+    """Profiles a PyTorch model, returning total operations and parameters, with optional layer-wise details."""
     handler_collection = {}
     types_collection = set()
     if custom_ops is None:
