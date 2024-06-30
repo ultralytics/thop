@@ -43,7 +43,9 @@ from .vision.calc_func import calculate_conv
 
 
 def count_fn_conv2d(input_shapes, output_shapes, *args, **kwargs):
-    """Calculates total operations (FLOPs) for a 2D conv layer based on input and output shapes using `calculate_conv`."""
+    """Calculates total operations (FLOPs) for a 2D conv layer based on input and output shapes using
+    `calculate_conv`.
+    """
     inputs, weight, bias, stride, padding, dilation, groups = args
     if len(input_shapes) == 2:
         x_shape, k_shape = input_shapes
