@@ -4,7 +4,7 @@ from torch.nn.utils.rnn import PackedSequence
 
 
 def _count_rnn_cell(input_size, hidden_size, bias=True):
-    """Calculate the total operations for an RNN cell based on input size, hidden size, and bias configuration."""
+    """Calculate the total operations for an RNN cell given input size, hidden size, and optional bias."""
     total_ops = hidden_size * (input_size + hidden_size) + hidden_size
     if bias:
         total_ops += hidden_size * 2
@@ -13,7 +13,7 @@ def _count_rnn_cell(input_size, hidden_size, bias=True):
 
 
 def count_rnn_cell(m: nn.RNNCell, x: torch.Tensor, y: torch.Tensor):
-    """Counts RNN cell operations based on input, hidden size, bias, and batch size."""
+    """Counts the total RNN cell operations based on input tensor, hidden size, bias, and batch size."""
     total_ops = _count_rnn_cell(m.input_size, m.hidden_size, m.bias)
 
     batch_size = x[0].size(0)
@@ -23,7 +23,7 @@ def count_rnn_cell(m: nn.RNNCell, x: torch.Tensor, y: torch.Tensor):
 
 
 def _count_gru_cell(input_size, hidden_size, bias=True):
-    """Counts the total operations for a GRU cell based on input size, hidden size, and bias."""
+    """Counts the total operations for a GRU cell based on input size, hidden size, and bias configuration."""
     total_ops = 0
     # r = \sigma(W_{ir} x + b_{ir} + W_{hr} h + b_{hr}) \\
     # z = \sigma(W_{iz} x + b_{iz} + W_{hz} h + b_{hz}) \\
@@ -57,9 +57,7 @@ def count_gru_cell(m: nn.GRUCell, x: torch.Tensor, y: torch.Tensor):
 
 
 def _count_lstm_cell(input_size, hidden_size, bias=True):
-    """Calculates the total operations for an LSTM cell during inference given input size, hidden size, and optional
-    bias.
-    """
+    """Counts LSTM cell operations during inference based on input size, hidden size, and bias configuration."""
     total_ops = 0
 
     # i = \sigma(W_{ii} x + b_{ii} + W_{hi} h + b_{hi}) \\
@@ -82,9 +80,7 @@ def _count_lstm_cell(input_size, hidden_size, bias=True):
 
 
 def count_lstm_cell(m: nn.LSTMCell, x: torch.Tensor, y: torch.Tensor):
-    """Count the number of operations for a single LSTM cell in a given batch, updating the model's total operations
-    count.
-    """
+    """Counts and updates the total operations for an LSTM cell in a mini-batch during inference."""
     total_ops = _count_lstm_cell(m.input_size, m.hidden_size, m.bias)
 
     batch_size = x[0].size(0)
@@ -94,7 +90,7 @@ def count_lstm_cell(m: nn.LSTMCell, x: torch.Tensor, y: torch.Tensor):
 
 
 def count_rnn(m: nn.RNN, x, y):
-    """Calculate and update the total number of operations for a single RNN cell in a given batch."""
+    """Calculate and update the total number of operations for each RNN cell in a given batch."""
     bias = m.bias
     input_size = m.input_size
     hidden_size = m.hidden_size
@@ -131,7 +127,7 @@ def count_rnn(m: nn.RNN, x, y):
 
 
 def count_gru(m: nn.GRU, x, y):
-    """Calculate the total number of operations for a GRU layer in a neural network model."""
+    """Calculates total operations for a GRU layer, updating the model's operation count based on batch size."""
     bias = m.bias
     input_size = m.input_size
     hidden_size = m.hidden_size
@@ -168,9 +164,7 @@ def count_gru(m: nn.GRU, x, y):
 
 
 def count_lstm(m: nn.LSTM, x, y):
-    """Calculate the total operations for LSTM layers in a network, accounting for input size, hidden size, bias, and
-    bidirectionality.
-    """
+    """Calculate total operations for LSTM layers, including bidirectional, updating model's total operations."""
     bias = m.bias
     input_size = m.input_size
     hidden_size = m.hidden_size

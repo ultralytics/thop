@@ -13,7 +13,7 @@ if LooseVersion(torch.__version__) < LooseVersion("1.8.0"):
 
 
 def count_clamp(input_shapes, output_shapes):
-    """Ensures proper array sizes for tensors by clamping input and output shapes."""
+    """Ensures tensor array sizes are appropriate by clamping specified input and output shapes."""
     return 0
 
 
@@ -23,7 +23,7 @@ def count_mul(input_shapes, output_shapes):
 
 
 def count_matmul(input_shapes, output_shapes):
-    """Calculates the total number of operations for a matrix multiplication given input and output shapes."""
+    """Calculates matrix multiplication ops based on input and output tensor shapes for performance profiling."""
     in_shape = input_shapes[0]
     out_shape = output_shapes[0]
     in_features = in_shape[-1]
@@ -32,7 +32,7 @@ def count_matmul(input_shapes, output_shapes):
 
 
 def count_fn_linear(input_shapes, output_shapes, *args, **kwargs):
-    """Calculates total operations (FLOPs) for a linear layer given input and output shapes."""
+    """Calculates the total FLOPs for a linear layer, including bias operations if specified."""
     flops = count_matmul(input_shapes, output_shapes)
     if "bias" in kwargs:
         flops += output_shapes[0].numel()
@@ -43,7 +43,9 @@ from .vision.calc_func import calculate_conv
 
 
 def count_fn_conv2d(input_shapes, output_shapes, *args, **kwargs):
-    """Calculates total operations (FLOPs) for a 2D convolutional layer given input and output shapes."""
+    """Calculates total operations (FLOPs) for a 2D conv layer based on input and output shapes using
+    `calculate_conv`.
+    """
     inputs, weight, bias, stride, padding, dilation, groups = args
     if len(input_shapes) == 2:
         x_shape, k_shape = input_shapes
@@ -65,12 +67,12 @@ def count_nn_linear(module: nn.Module, input_shapes, output_shapes):
 
 
 def count_zero_ops(module: nn.Module, input_shapes, output_shapes, *args, **kwargs):
-    """Returns 0 for the given neural network module, input shapes, and output shapes."""
+    """Returns 0 for a neural network module, input shapes, and output shapes in PyTorch."""
     return 0
 
 
 def count_nn_conv2d(module: nn.Conv2d, input_shapes, output_shapes):
-    """Calculates total operations for a 2D convolutional neural network layer in a given neural network module."""
+    """Calculates FLOPs for a 2D Conv2D layer in an nn.Module using input and output shapes."""
     bias_op = 1 if module.bias is not None else 0
     out_shape = output_shapes[0]
 
@@ -82,7 +84,7 @@ def count_nn_conv2d(module: nn.Conv2d, input_shapes, output_shapes):
 
 
 def count_nn_bn2d(module: nn.BatchNorm2d, input_shapes, output_shapes):
-    """Calculate the total operations for a given nn.BatchNorm2d module based on its output shape."""
+    """Calculate FLOPs for an nn.BatchNorm2d layer based on the given output shape."""
     assert len(output_shapes) == 1, "nn.BatchNorm2d should only have one output"
     y = output_shapes[0]
     return 2 * y.numel()
@@ -127,9 +129,7 @@ def null_print(*args, **kwargs):
 
 
 def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
-    """Profiles the given torch.nn Module to calculate total FLOPs for each operation and prints detailed node
-    information if verbose.
-    """
+    """Profiles nn.Module for total FLOPs per operation and prints detailed nodes if verbose."""
     gm: torch.fx.GraphModule = symbolic_trace(mod)
     ShapeProp(gm).propagate(input)
 

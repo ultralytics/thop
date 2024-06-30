@@ -22,7 +22,7 @@ prYellow = colorful_print(print, color=COLOR_YELLOW)
 
 
 def clever_format(nums, format="%.2f"):
-    """Formats numerical values into a more readable string with units (K, M, G, T) based on their magnitude."""
+    """Formats numbers into human-readable strings with units (K for thousand, M for million, etc.)."""
     if not isinstance(nums, Iterable):
         nums = [nums]
     clever_nums = []

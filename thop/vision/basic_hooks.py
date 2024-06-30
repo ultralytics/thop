@@ -9,17 +9,17 @@ multiply_adds = 1
 
 
 def count_parameters(m, x, y):
-    """Calculate and update the total number of parameters in a given PyTorch model."""
+    """Calculate and return the total number of learnable parameters in a given PyTorch model."""
     m.total_params[0] = calculate_parameters(m.parameters())
 
 
 def zero_ops(m, x, y):
-    """Incrementally add the number of zero operations to the model's total operations count."""
+    """Incrementally add zero operations to the model's total operations count."""
     m.total_ops += calculate_zero_ops()
 
 
 def count_convNd(m: _ConvNd, x, y: torch.Tensor):
-    """Calculate and add the number of convolutional operations (FLOPs) to the model's total operations count."""
+    """Calculate and add the number of convolutional operations (FLOPs) for a ConvNd layer to the model's total ops."""
     x = x[0]
 
     m.total_ops += calculate_conv2d_flops(
@@ -40,7 +40,7 @@ def count_convNd(m: _ConvNd, x, y: torch.Tensor):
 
 
 def count_convNd_ver2(m: _ConvNd, x, y: torch.Tensor):
-    """Calculates the total operations for a convolutional layer and updates the layer's total_ops attribute."""
+    """Calculates and updates total operations (FLOPs) for a convolutional layer in a PyTorch model."""
     x = x[0]
 
     # N x H x W (exclude Cout)
@@ -56,9 +56,7 @@ def count_convNd_ver2(m: _ConvNd, x, y: torch.Tensor):
 
 
 def count_normalization(m: nn.modules.batchnorm._BatchNorm, x, y):
-    """Calculate and add the FLOPs for a batch normalization layer, considering elementwise operations and possible
-    affine parameters.
-    """
+    """Calculate and add the FLOPs for a batch normalization layer, including elementwise and affine operations."""
     # https://github.com/Lyken17/pytorch-OpCounter/issues/124
     # y = (x - mean) / sqrt(eps + var) * weight + bias
     x = x[0]
@@ -80,7 +78,7 @@ def count_normalization(m: nn.modules.batchnorm._BatchNorm, x, y):
 
 
 def count_prelu(m, x, y):
-    """Calculate and update the total operation counts for a PReLU layer."""
+    """Calculate and update the total operation counts for a PReLU layer using input element number."""
     x = x[0]
 
     nelements = x.numel()
@@ -95,7 +93,7 @@ def count_relu(m, x, y):
 
 
 def count_softmax(m, x, y):
-    """Calculate and update the total operation counts for a Softmax layer."""
+    """Calculate and update the total operation counts for a Softmax layer in a PyTorch model."""
     x = x[0]
     nfeatures = x.size()[m.dim]
     batch_size = x.numel() // nfeatures
@@ -104,7 +102,7 @@ def count_softmax(m, x, y):
 
 
 def count_avgpool(m, x, y):
-    """Calculate and update the total operation counts for an AvgPool layer."""
+    """Calculate and update the total number of operations (FLOPs) for an AvgPool layer based on the output elements."""
     # total_div = 1
     # kernel_ops = total_add + total_div
     num_elements = y.numel()
@@ -112,7 +110,7 @@ def count_avgpool(m, x, y):
 
 
 def count_adap_avgpool(m, x, y):
-    """Calculate and update the total operation counts for an AdaptiveAvgPool layer."""
+    """Calculate and update the total operation counts for an AdaptiveAvgPool layer using kernel and element counts."""
     kernel = torch.div(torch.DoubleTensor([*(x[0].shape[2:])]), torch.DoubleTensor([*(y.shape[2:])]))
     total_add = torch.prod(kernel)
     num_elements = y.numel()
@@ -121,7 +119,7 @@ def count_adap_avgpool(m, x, y):
 
 # TODO: verify the accuracy
 def count_upsample(m, x, y):
-    """Update the total operations counter in the given module for supported upsampling modes."""
+    """Update total operations counter for upsampling layers based on the mode used."""
     if m.mode not in (
         "nearest",
         "linear",
@@ -137,9 +135,7 @@ def count_upsample(m, x, y):
 
 # nn.Linear
 def count_linear(m, x, y):
-    """Counts total operations for nn.Linear layers by calculating multiplications and additions based on input and
-    output elements.
-    """
+    """Counts total operations for nn.Linear layers using input and output element dimensions."""
     total_mul = m.in_features
     # total_add = m.in_features - 1
     # total_add += 1 if m.bias is not None else 0
