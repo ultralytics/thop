@@ -37,8 +37,8 @@ def calculate_conv2d_flops(input_size: list, output_size: list, kernel_size: lis
 
 
 def calculate_conv(bias, kernel_size, output_size, in_channel, group):
+    """Calculate FLOPs for convolutional layers given bias, kernel size, output size, in_channels, and groups."""
     warnings.warn("This API is being deprecated.")
-    """Inputs are all numbers!"""
     return torch.DoubleTensor([output_size * (in_channel / group * kernel_size + bias)])
 
 
