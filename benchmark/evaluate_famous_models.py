@@ -1,7 +1,6 @@
 import torch
-from torchvision import models
-
 from thop.profile import profile
+from torchvision import models
 
 model_names = sorted(
     name
