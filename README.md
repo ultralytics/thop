@@ -137,7 +137,7 @@ We welcome community contributions to enhance THOP. Please check our [Contributi
 
 ## 📄 License
 
-THOP is licensed under the AGPL-3.0 License. For more information, see the [LICENSE](https://github.com/ultralytics/thop/blob/master/LICENSE) file.
+THOP is licensed under the AGPL-3.0 License. For more information, see the [LICENSE](https://github.com/ultralytics/thop/blob/main/LICENSE) file.
 
 ## 📮 Contact
 
