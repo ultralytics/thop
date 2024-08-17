@@ -27,7 +27,7 @@ jobs:
 
       - name: Install dependencies and local package
         run: |
-          pip install toml packaging requests
+          pip install toml requests
           pip install -e . --no-deps
 
       - name: Check version increments
@@ -35,8 +35,7 @@ jobs:
         run: |
           import os
           import requests
-          from importlib.metadata import version as get_version
-          from packaging import version
+          import importlib.metadata
 
           # Load package name from pyproject.toml
           import toml
@@ -44,8 +43,8 @@ jobs:
           package_name = pyproject['project']['name']
           print(f"Package Name: {package_name}")
 
-          # Get the installed package version using importlib.metadata.version()
-          local_version = get_version(package_name)
+          # Get the installed package version
+          local_version = importlib.metadata.version(package_name)
           print(f"Local Version: {local_version}")
 
           # Get the online package version from PyPI using the API
