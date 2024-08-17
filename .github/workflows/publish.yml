@@ -22,7 +22,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}  # use your PAT here
-          fetch-depth: "0" # pulls all commits (needed for correct last updated dates in Docs)
       - name: Git config
         run: |
           git config --global user.name "UltralyticsAssistant"
