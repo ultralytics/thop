@@ -56,7 +56,7 @@ jobs:
               # Read the __init__.py file and extract the version
               with open(init_file_path) as f:
                   for line in f:
-                      if line.startswith(f"__{attr_name}__"):
+                      if line.startswith(attr_name):
                           local_version = line.split('=')[1].strip().strip("'\"")
                           break
               print(f"Dynamic version detected. Local Version: {local_version}")
