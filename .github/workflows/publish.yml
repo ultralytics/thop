@@ -29,7 +29,6 @@ jobs:
       - name: Install dependencies and local package
         run: |
           pip install toml requests
-          pip install -e . --no-deps
 
       - name: Determine Project Version
         id: determine_version
