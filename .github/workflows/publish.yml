@@ -139,7 +139,7 @@ jobs:
               env_file.write(f"RELEASE_NOTES<<EOF\n{release_notes}\nEOF\n")
 
       - name: Create a new tag
-        if: env.PUBLISH == 'true'
+        if: env.PUBLISH == 'true' && github.event.inputs.pypi == 'true'
         run: |
           git config --global user.name "UltralyticsAssistant"
           git config --global user.email "web@ultralytics.com"
@@ -148,7 +148,7 @@ jobs:
           echo "Created and pushed tag v${{ env.NEW_VERSION }} 🏷️."
 
       - name: Create GitHub Release
-        if: env.PUBLISH == 'true'
+        if: env.PUBLISH == 'true' && github.event.inputs.pypi == 'true'
         uses: actions/create-release@v1
         with:
           tag_name: v${{ env.NEW_VERSION }}
