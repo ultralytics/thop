@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
@@ -30,23 +30,55 @@ jobs:
           pip install toml requests
           pip install -e . --no-deps
 
+      - name: Determine Project Version
+        id: determine_version
+        shell: python
+        run: |
+          import os
+          import toml
+          import importlib
+          from importlib import import_module
+
+          # Load the pyproject.toml
+          pyproject = toml.load('pyproject.toml')
+          project_version = pyproject['project'].get('version', 'dynamic')
+
+          if project_version == 'dynamic':
+              # If the version is dynamic, retrieve it from the attribute specified in tool.setuptools.dynamic
+              dynamic_version_info = pyproject['tool']['setuptools']['dynamic']['version']
+              version_attr = dynamic_version_info['attr']
+
+              # Extract the module and attribute name
+              module_name, attr_name = version_attr.split('.')
+
+              # Dynamically import the module and retrieve the version attribute
+              module = import_module(module_name)
+              local_version = getattr(module, attr_name)
+              print(f"Dynamic version detected. Local Version: {local_version}")
+          else:
+              # If the version is static, use it directly
+              local_version = project_version
+              print(f"Static version detected. Local Version: {local_version}")
+
+          # Set the local version as an environment variable
+          with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
+              env_file.write(f"LOCAL_VERSION={local_version}\n")
+
       - name: Check version increments
         id: version_check
         run: |
           import os
           import requests
-          import importlib.metadata
           from packaging import version
+
+          # Get the local version from the environment variable
+          local_version = os.getenv('LOCAL_VERSION')
+          print(f"Local Version: {local_version}")
 
           # Load package name from pyproject.toml
           import toml
           pyproject = toml.load('pyproject.toml')
           package_name = pyproject['project']['name']
-          print(f"Package Name: {package_name}")
-
-          # Get the installed package version
-          local_version = importlib.metadata.version(package_name)
-          print(f"Local Version: {local_version}")
 
           # Get the online package version from PyPI using the API
           response = requests.get(f"https://pypi.org/pypi/{package_name}/json")
