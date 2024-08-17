@@ -46,12 +46,15 @@ jobs:
               dynamic_version_info = pyproject['tool']['setuptools']['dynamic']['version']
               version_attr = dynamic_version_info['attr']
 
-              # Extract the module and attribute name
+              # Extract the module path and attribute name
               module_path = version_attr.split('.')[0].replace('.', '/')
               attr_name = version_attr.split('.')[-1]
 
-              # Read the file and extract the version
-              with open(f"{module_path}.py") as f:
+              # Assume the version is in __init__.py if it's a package (directory with __init__.py)
+              init_file_path = os.path.join(module_path, "__init__.py")
+
+              # Read the __init__.py file and extract the version
+              with open(init_file_path) as f:
                   for line in f:
                       if line.startswith(f"__{attr_name}__"):
                           local_version = line.split('=')[1].strip().strip("'\"")
