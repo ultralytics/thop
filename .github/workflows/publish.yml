@@ -36,24 +36,26 @@ jobs:
         run: |
           import os
           import toml
-          import importlib
-          from importlib import import_module
 
           # Load the pyproject.toml
           pyproject = toml.load('pyproject.toml')
           project_version = pyproject['project'].get('version', 'dynamic')
 
           if project_version == 'dynamic':
-              # If the version is dynamic, retrieve it from the attribute specified in tool.setuptools.dynamic
+              # If the version is dynamic, retrieve it from the specified file
               dynamic_version_info = pyproject['tool']['setuptools']['dynamic']['version']
               version_attr = dynamic_version_info['attr']
 
               # Extract the module and attribute name
-              module_name, attr_name = version_attr.split('.')
+              module_path = version_attr.split('.')[0].replace('.', '/')
+              attr_name = version_attr.split('.')[-1]
 
-              # Dynamically import the module and retrieve the version attribute
-              module = import_module(module_name)
-              local_version = getattr(module, attr_name)
+              # Read the file and extract the version
+              with open(f"{module_path}.py") as f:
+                  for line in f:
+                      if line.startswith(f"__{attr_name}__"):
+                          local_version = line.split('=')[1].strip().strip("'\"")
+                          break
               print(f"Dynamic version detected. Local Version: {local_version}")
           else:
               # If the version is static, use it directly
