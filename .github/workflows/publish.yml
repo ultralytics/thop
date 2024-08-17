@@ -36,6 +36,7 @@ jobs:
           import os
           import requests
           import importlib.metadata
+          from packaging import version
 
           # Load package name from pyproject.toml
           import toml
@@ -85,6 +86,26 @@ jobs:
               with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
                   env_file.write(f'PUBLISH=false\n')
 
+      - name: Generate Release Notes
+        if: env.PUBLISH == 'true'
+        shell: python
+        run: |
+          import os
+          import subprocess
+
+          # Get the previous tag
+          previous_tag = subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"]).strip().decode('utf-8')
+          print(f"Previous tag: {previous_tag}")
+
+          # Generate release notes based on commits since the last tag
+          release_notes = subprocess.check_output(["git", "log", f"{previous_tag}..HEAD", "--pretty=format:* %s"]).decode('utf-8')
+          print("Release Notes:")
+          print(release_notes)
+
+          # Export the release notes as an environment variable
+          with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
+              env_file.write(f"RELEASE_NOTES<<EOF\n{release_notes}\nEOF\n")
+
       - name: Create a new tag
         if: env.PUBLISH == 'true'
         run: |
@@ -100,6 +121,7 @@ jobs:
         with:
           tag_name: v${{ env.NEW_VERSION }}
           release_name: "Release v${{ env.NEW_VERSION }}"
+          body: ${{ env.RELEASE_NOTES }}
           draft: false
           prerelease: false
         env:
