@@ -1,5 +1,5 @@
 # Ultralytics YOLO 🚀, AGPL-3.0 license
-# Publish pip package to PyPI https://pypi.org/project/ultralytics-thop/
+# Publish pip package to PyPI https://pypi.org/
 
 name: Publish to PyPI
 
@@ -11,60 +11,107 @@ on:
       pypi:
         type: boolean
         description: Publish to PyPI
+        required: true
 
 jobs:
   publish:
-    if: github.repository == 'ultralytics/thop' && github.actor == 'glenn-jocher'
-    name: Publish
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          fetch-depth: "0" # pulls all commits (needed correct last updated dates in Docs)
-      - name: Set up Python environment
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip" # caching pip dependencies
-      - name: Install dependencies
+          python-version: '3.x'
+
+      - name: Install dependencies and local package
         run: |
-          python -m pip install --upgrade pip wheel build twine toml
-          pip install ultralytics --extra-index-url https://download.pytorch.org/whl/cpu
-          pip uninstall thop -y  # uninstall older thop that conflicts with this repo
-          pip install -e .
-      - name: Check PyPI version
-        shell: python
+          pip install toml packaging requests
+          pip install -e . --no-deps
+
+      - name: Check version increments
+        id: version_check
         run: |
           import os
-          import thop
-          import ultralytics
-          from ultralytics.utils.checks import check_latest_pypi_version
-          v_local = tuple(map(int, thop.__version__.split('.')))
-          v_pypi = tuple(map(int, check_latest_pypi_version('ultralytics-thop').split('.')))
-          print(f'Local version is {v_local}')
-          print(f'PyPI version is {v_pypi}')
-          d = [a - b for a, b in zip(v_local, v_pypi)]  # diff
-          increment_patch = (d[0] == d[1] == 0) and (0 < d[2] < 3)  # publish if patch version increments by 1 or 2
-          increment_minor = (d[0] == 0) and (d[1] == 1) and v_local[2] == 0  # publish if minor version increments
-          increment = increment_patch or increment_minor
-          os.system(f'echo "increment={increment}" >> $GITHUB_OUTPUT')
-          os.system(f'echo "version={thop.__version__}" >> $GITHUB_OUTPUT')
-          if increment:
-              print('Local version is higher than PyPI version. Publishing new version to PyPI ✅.')
-        id: check_pypi
-      - name: Publish new tag
-        if: steps.check_pypi.outputs.increment == 'True'
+          import requests
+          from importlib.metadata import version as get_version
+          from packaging import version
+
+          # Load package name from pyproject.toml
+          import toml
+          pyproject = toml.load('pyproject.toml')
+          package_name = pyproject['project']['name']
+          print(f"Package Name: {package_name}")
+
+          # Get the installed package version using importlib.metadata.version()
+          local_version = get_version(package_name)
+          print(f"Local Version: {local_version}")
+
+          # Get the online package version from PyPI using the API
+          response = requests.get(f"https://pypi.org/pypi/{package_name}/json")
+          if response.status_code == 200:
+              online_version = response.json()['info']['version']
+              print(f"Online Version: {online_version}")
+
+              # Parse versions
+              local_ver = version.parse(local_version)
+              online_ver = version.parse(online_version)
+
+              # Determine if we should publish
+              publish = False
+
+              if local_ver.major == online_ver.major:
+                  if local_ver.minor == online_ver.minor:
+                      if 0 < (local_ver.micro - online_ver.micro) <= 2:
+                          publish = True
+                          print('Patch version has increased by 1 or 2. Ready to publish ✅.')
+                  elif (local_ver.minor - online_ver.minor) == 1 and local_ver.micro == 0:
+                      publish = True
+                      print('Minor version has increased by 1 and patch version reset. Ready to publish ✅.')
+              elif (local_ver.major - online_ver.major) == 1 and local_ver.minor == 0 and local_ver.micro == 0:
+                  publish = True
+                  print('Major version has increased by 1 and minor/patch versions reset. Ready to publish ✅.')
+          else:
+              print("Package not found on PyPI, assuming this is the first release. Ready to publish ✅.")
+              publish = True
+
+          if publish:
+              print("Local version is higher than PyPI version. Publishing new version to PyPI ✅.")
+              with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
+                  env_file.write(f'PUBLISH=true\n')
+                  env_file.write(f'NEW_VERSION={local_version}\n')
+          else:
+              print("No significant version increment, skipping publish ❌.")
+              with open(os.getenv('GITHUB_ENV'), 'a') as env_file:
+                  env_file.write(f'PUBLISH=false\n')
+
+      - name: Create a new tag
+        if: env.PUBLISH == 'true'
         run: |
-          git config --global user.name "UltralyticsAssistant"
-          git config --global user.email "web@ultralytics.com"
-          git tag -a "v${{ steps.check_pypi.outputs.version }}" -m "$(git log -1 --pretty=%B)"  # i.e. "v0.1.2 commit message"
-          git push origin "v${{ steps.check_pypi.outputs.version }}"
-      - name: Publish to PyPI
-        continue-on-error: true
-        if: (github.event_name == 'push' || github.event.inputs.pypi == 'true')  && steps.check_pypi.outputs.increment == 'True'
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a v${{ env.NEW_VERSION }} -m "Release version ${{ env.NEW_VERSION }}"
+          git push origin v${{ env.NEW_VERSION }}
+          echo "Created and pushed tag v${{ env.NEW_VERSION }} 🏷️."
+
+      - name: Create GitHub Release
+        if: env.PUBLISH == 'true'
+        uses: actions/create-release@v1
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          release_name: "Release v${{ env.NEW_VERSION }}"
+          draft: false
+          prerelease: false
         env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "Created GitHub release for v${{ env.NEW_VERSION }} 🚀."
+
+      - name: Publish to PyPI
+        if: env.PUBLISH == 'true' && github.event.inputs.pypi == 'true'
         run: |
+          pip install --upgrade pip build twine
           python -m build
-          python -m twine upload dist/* -u __token__ -p $PYPI_TOKEN
+          python -m twine upload dist/* --non-interactive -u __token__ -p ${{ secrets.PYPI_TOKEN }}
+          echo "Published version v${{ env.NEW_VERSION }} to PyPI 📦."
