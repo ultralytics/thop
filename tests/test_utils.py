@@ -3,6 +3,7 @@ from thop import utils
 
 class TestUtils:
     """Class for testing the clever_format function from the thop library for correct number formatting."""
+
     def test_clever_format_returns_formatted_number(self):
         """Tests that clever_format returns a string like '1.00B' for the given number and format pattern."""
         nums = 1
