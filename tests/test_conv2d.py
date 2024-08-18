@@ -5,6 +5,8 @@ from thop import profile
 
 
 class TestUtils:
+    """Utility class for testing Conv2D layers with and without bias, profiling FLOPs and parameters using THOP."""
+
     def test_conv2d_no_bias(self):
         """Tests a 2D Conv layer without bias using THOP profiling on predefined input dimensions and parameters."""
         n, in_c, ih, iw = 1, 3, 32, 32  # torch.randint(1, 10, (4,)).tolist()
