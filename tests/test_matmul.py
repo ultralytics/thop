@@ -5,6 +5,7 @@ from thop import profile
 
 
 class TestUtils:
+    """Utility functions for testing and profiling the efficiency of PyTorch neural network layers."""
     def test_matmul_case2(self):
         """Test matrix multiplication case by profiling FLOPs and parameters of a PyTorch nn.Linear layer."""
         n, in_c, out_c = 1, 100, 200
