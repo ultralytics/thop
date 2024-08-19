@@ -172,6 +172,8 @@ jobs:
           python -m build
           python -m twine upload dist/* -u __token__ -p $PYPI_TOKEN
       - name: Extract PR Details
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Check if the event is a pull request or pull_request_target
           if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "pull_request_target" ]; then
