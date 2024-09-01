@@ -34,9 +34,7 @@ for name, model in models.items():
         total_ops, total_params = profile(model, (inputs[0],), verbose=False)
     else:
         total_ops, total_params = profile(model, (inputs,), verbose=False)
-    print(
-        f"{name} | {total_params / 1e6:.2f} | {total_ops / 1e9:.2f}"
-    )
+    print(f"{name} | {total_params / 1e6:.2f} | {total_ops / 1e9:.2f}")
 
 # validate batch_first support
 inputs = torch.randn(100, 32, input_size)
