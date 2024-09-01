@@ -44,7 +44,7 @@ def count_convNd_ver2(m: _ConvNd, x, y: torch.Tensor):
     x = x[0]
 
     # N x H x W (exclude Cout)
-    output_size = torch.zeros((y.size()[:1] + y.size()[2:])).numel()
+    output_size = torch.zeros(y.size()[:1] + y.size()[2:]).numel()
     # # Cout x Cin x Kw x Kh
     # kernel_ops = m.weight.nelement()
     # if m.bias is not None:
