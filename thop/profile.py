@@ -69,8 +69,8 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
 
         if hasattr(m, "total_ops") or hasattr(m, "total_params"):
             logging.warning(
-                "Either .total_ops or .total_params is already defined in %s. "
-                "Be careful, it might change your code's behavior." % str(m)
+                f"Either .total_ops or .total_params is already defined in {str(m)}. "
+                "Be careful, it might change your code's behavior."
             )
 
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))

@@ -35,11 +35,7 @@ for name, model in models.items():
     else:
         total_ops, total_params = profile(model, (inputs,), verbose=False)
     print(
-        "{} | {:.2f} | {:.2f}".format(
-            name,
-            total_params / 1e6,
-            total_ops / 1e9,
-        )
+        f"{name} | {total_params / 1e6:.2f} | {total_ops / 1e9:.2f}"
     )
 
 # validate batch_first support
