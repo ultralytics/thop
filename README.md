@@ -141,7 +141,7 @@ THOP is licensed under the AGPL-3.0 License. For more information, see the [LICE
 
 ## 📮 Contact
 
-For bugs or feature requests, please open an issue on [GitHub Issues](https://github.com/ultralytics/thop/issues). Join our community on [Discord](https://ultralytics.com/discord) for discussions and support.
+For bugs or feature requests, please open an issue on [GitHub Issues](https://github.com/ultralytics/thop/pulls). Join our community on [Discord](https://discord.com/invite/ultralytics) for discussions and support.
 
 <br>
 <div align="center">
