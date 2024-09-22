@@ -63,9 +63,11 @@ dependencies = [
 ]
 
 [project.urls]
+"Homepage" = "https://ultralytics.com"
+"Source" = "https://github.com/ultralytics/thop"
+"Documentation" = "https://docs.ultralytics.com"
 "Bug Reports" = "https://github.com/ultralytics/thop/issues"
-"Funding" = "https://ultralytics.com"
-"Source" = "https://github.com/ultralytics/thop/"
+"Changelog" = "https://github.com/ultralytics/thop/releases"
 
 [tool.setuptools.dynamic]
 version = { attr = "thop.__version__" }
