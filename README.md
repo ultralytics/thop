@@ -1,11 +1,11 @@
-<br>
-<a href="https://ultralytics.com" target="_blank"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
+<br/>
+<a href="https://www.ultralytics.com/" target="_blank"><img alt="Ultralytics logo" src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320"/></a>
 
 # 🚀 THOP: PyTorch-OpCounter
 
 Welcome to the [THOP](https://github.com/ultralytics/thop) repository, your comprehensive solution for profiling PyTorch models by computing the number of Multiply-Accumulate Operations (MACs) and parameters. This tool is essential for deep learning practitioners to evaluate model efficiency and performance.
 
-[![GitHub Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/main.yml) <a href="https://ultralytics.com/discord"><img alt="Discord" src="https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue"></a> <a href="https://community.ultralytics.com"><img alt="Ultralytics Forums" src="https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue"></a> <a href="https://reddit.com/r/ultralytics"><img alt="Ultralytics Reddit" src="https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue"></a>
+[![GitHub Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/main.yml) <a href="https://discord.com/invite/ultralytics"><img alt="Discord" src="https://img.shields.io/discord/1089800235347353640?logo=discord&amp;logoColor=white&amp;label=Discord&amp;color=blue"/></a> <a href="https://community.ultralytics.com/"><img alt="Ultralytics Forums" src="https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&amp;logo=discourse&amp;label=Forums&amp;color=blue"/></a> <a href="https://reddit.com/r/ultralytics"><img alt="Ultralytics Reddit" src="https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&amp;logo=reddit&amp;logoColor=white&amp;label=Reddit&amp;color=blue"/></a>
 
 ## 📄 Description
 
@@ -15,7 +15,7 @@ THOP offers an intuitive API to profile PyTorch models by calculating the number
 
 You can install THOP via pip:
 
-[![PyPI - Version](https://img.shields.io/pypi/v/ultralytics-thop?logo=pypi&logoColor=white)](https://pypi.org/project/ultralytics-thop/) [![Downloads](https://static.pepy.tech/badge/ultralytics-thop)](https://pepy.tech/project/ultralytics-thop) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ultralytics-thop?logo=python&logoColor=gold)](https://pypi.org/project/ultralytics-thop/)
+[![PyPI - Version](https://img.shields.io/pypi/v/ultralytics-thop?logo=pypi&amp;logoColor=white)](https://pypi.org/project/ultralytics-thop/) [![Downloads](https://static.pepy.tech/badge/ultralytics-thop)](https://pepy.tech/project/ultralytics-thop) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ultralytics-thop?logo=python&amp;logoColor=gold)](https://pypi.org/project/ultralytics-thop/)
 
 ```bash
 pip install ultralytics-thop
@@ -143,19 +143,19 @@ THOP is licensed under the AGPL-3.0 License. For more information, see the [LICE
 
 For bugs or feature requests, please open an issue on [GitHub Issues](https://github.com/ultralytics/thop/pulls). Join our community on [Discord](https://discord.com/invite/ultralytics) for discussions and support.
 
-<br>
+<br/>
 <div align="center">
-  <a href="https://github.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-github.png" width="3%" alt="Ultralytics GitHub"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://www.linkedin.com/company/ultralytics/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-linkedin.png" width="3%" alt="Ultralytics LinkedIn"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://twitter.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%" alt="Ultralytics Twitter"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://youtube.com/ultralytics?sub_confirmation=1"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%" alt="Ultralytics YouTube"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://www.tiktok.com/@ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%" alt="Ultralytics TikTok"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://ultralytics.com/bilibili"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-bilibili.png" width="3%" alt="Ultralytics BiliBili"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://ultralytics.com/discord"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="Ultralytics Discord"></a>
+<a href="https://github.com/ultralytics"><img alt="Ultralytics GitHub" src="https://github.com/ultralytics/assets/raw/main/social/logo-social-github.png" width="3%"/></a>
+<img alt="space" src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%"/>
+<a href="https://www.linkedin.com/company/ultralytics/"><img alt="Ultralytics LinkedIn" src="https://github.com/ultralytics/assets/raw/main/social/logo-social-linkedin.png" width="3%"/></a>
+<img alt="space" src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%"/>
+<a href="https://twitter.com/ultralytics"><img alt="Ultralytics Twitter" src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%"/></a>
+<img alt="space" src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%"/>
+<a href="https://youtube.com/ultralytics?sub_confirmation=1"><img alt="Ultralytics YouTube" src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%"/></a>
+<img alt="space" src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%"/>
+<a href="https://www.tiktok.com/@ultralytics"><img alt="Ultralytics TikTok" src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%"/></a>
+<img alt="space" src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%"/>
+<a href="https://ultralytics.com/bilibili"><img alt="Ultralytics BiliBili" src="https://github.com/ultralytics/assets/raw/main/social/logo-social-bilibili.png" width="3%"/></a>
+<img alt="space" src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%"/>
+<a href="https://discord.com/invite/ultralytics"><img alt="Ultralytics Discord" src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%"/></a>
 </div>
