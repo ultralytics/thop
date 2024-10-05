@@ -133,7 +133,7 @@ The following table presents the parameters and MACs for popular models. These r
 
 ## 💡 Contribute
 
-We welcome community contributions to enhance THOP. Please check our [Contributing Guide](https://docs.ultralytics.com/help/contributing) for more details. Your feedback and suggestions are highly appreciated!
+We welcome community contributions to enhance THOP. Please check our [Contributing Guide](https://docs.ultralytics.com/help/contributing/) for more details. Your feedback and suggestions are highly appreciated!
 
 ## 📄 License
 
