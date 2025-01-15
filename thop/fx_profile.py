@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import logging
 from distutils.version import LooseVersion
 
@@ -7,8 +9,7 @@ import torch.nn as nn
 
 if LooseVersion(torch.__version__) < LooseVersion("1.8.0"):
     logging.warning(
-        f"torch.fx requires version higher than 1.8.0. "
-        f"But You are using an old version PyTorch {torch.__version__}. "
+        f"torch.fx requires version higher than 1.8.0. But You are using an old version PyTorch {torch.__version__}. "
     )
 
 

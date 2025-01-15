@@ -1,6 +1,7 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import torch
 import torch.nn as nn
-
 from thop import profile
 
 

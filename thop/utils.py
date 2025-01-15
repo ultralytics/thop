@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 from collections.abc import Iterable
 
 COLOR_RED = "91m"

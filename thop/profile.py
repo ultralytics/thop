@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 from thop.rnn_hooks import *
 from thop.vision.basic_hooks import *
 
