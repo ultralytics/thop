@@ -1,8 +1,9 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import torch
-from thop.profile import profile
 from torchvision import models
+
+from thop.profile import profile
 
 model_names = sorted(
     name
