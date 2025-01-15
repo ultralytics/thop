@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import torch
 import torch.nn as nn
 
@@ -54,6 +56,6 @@ class TestUtils:
 
             flops, params = profile(net, inputs=(data,))
             print(flops, params)
-            assert (
-                flops == n * out_c * oh * ow // g * in_c * kh * kw
-            ), f"{flops} v.s. {n * out_c * oh * ow // g * in_c * kh * kw}"
+            assert flops == n * out_c * oh * ow // g * in_c * kh * kw, (
+                f"{flops} v.s. {n * out_c * oh * ow // g * in_c * kh * kw}"
+            )
