@@ -1,22 +1,22 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 # Publish pip package to PyPI https://pypi.org/project/ultralytics/ and Docs to https://docs.ultralytics.com
-#
+
 # Overview:
 # This `pyproject.toml` file manages the build, packaging, and distribution of the `thop` library. 
 # It defines essential project metadata, dependencies, and settings used to develop and deploy the library.
-# 
+
 # Key Sections:
 # - `[build-system]`: Specifies the build requirements and backend (e.g., setuptools, wheel).
 # - `[project]`: Includes details like name, version, description, authors, dependencies, and more.
 # - `[tool.setuptools.dynamic]`: Configures dynamic versioning for the project.
 # - `[tool.setuptools]`: Configures settings specific to the `setuptools` build backend.
-# 
+
 # Installation:
 # The `thop` library can be installed using the command: `pip install ultralytics-thop`
 # For development purposes, you can install the package in editable mode with: `pip install -e .`
 # This approach allows for real-time code modifications without the need for re-installation.
-# 
+
 # Documentation:
 # For comprehensive documentation and usage instructions, visit: https://github.com/ultralytics/thop
 
