@@ -39,8 +39,9 @@ Profiling a standard PyTorch model like [ResNet50](https://pytorch.org/vision/ma
 
 ```python
 import torch
-from torchvision.models import resnet50 # Example model
-from thop import profile # Import the profile function from THOP
+from torchvision.models import resnet50  # Example model
+
+from thop import profile  # Import the profile function from THOP
 
 # Load a pre-trained model (e.g., ResNet50)
 model = resnet50()
@@ -61,7 +62,9 @@ If your model includes custom or third-party modules not natively supported by T
 ```python
 import torch
 import torch.nn as nn
+
 from thop import profile
+
 
 # Define your custom module
 class YourCustomModule(nn.Module):
@@ -73,6 +76,7 @@ class YourCustomModule(nn.Module):
     def forward(self, x):
         return self.conv(x)
 
+
 # Define a custom counting function for your module
 # This function should calculate and return the MACs for the module's operations
 def count_your_custom_module(module, x, y):
@@ -82,21 +86,21 @@ def count_your_custom_module(module, x, y):
     # For simplicity, we'll just assign a placeholder value or use a helper if available
     # In a real scenario, you'd implement the precise MAC calculation here.
     # For nn.Conv2d, THOP usually handles it, but this demonstrates the concept.
-    macs = 0 # Placeholder: Implement actual MAC calculation based on module logic
+    macs = 0  # Placeholder: Implement actual MAC calculation based on module logic
     # You might need access to module properties like kernel_size, stride, padding, channels etc.
     # Example for a Conv2d layer (simplified):
     if isinstance(module, nn.Conv2d):
-         _, _, H, W = y.shape # Output shape
-         k_h, k_w = module.kernel_size
-         in_c = module.in_channels
-         out_c = module.out_channels
-         groups = module.groups
-         macs = (k_h * k_w * in_c * out_c * H * W) / groups
-    module.total_ops += torch.DoubleTensor([macs]) # Accumulate MACs
+        _, _, H, W = y.shape  # Output shape
+        k_h, k_w = module.kernel_size
+        in_c = module.in_channels
+        out_c = module.out_channels
+        groups = module.groups
+        macs = (k_h * k_w * in_c * out_c * H * W) / groups
+    module.total_ops += torch.DoubleTensor([macs])  # Accumulate MACs
 
 
 # Instantiate a model containing your custom module
-model = YourCustomModule() # Or a larger model incorporating this module
+model = YourCustomModule()  # Or a larger model incorporating this module
 
 # Create a dummy input
 dummy_input = torch.randn(1, 3, 224, 224)
@@ -105,8 +109,8 @@ dummy_input = torch.randn(1, 3, 224, 224)
 macs, params = profile(model, inputs=(dummy_input,), custom_ops={YourCustomModule: count_your_custom_module})
 
 print(f"Custom MACs: {macs}, Parameters: {params}")
-
 ```
+
 This allows for accurate profiling even with complex or non-standard architectures, which is useful when working with models like those found in the [Ultralytics models section](https://docs.ultralytics.com/models/).
 
 ### Improve Output Readability
@@ -114,9 +118,10 @@ This allows for accurate profiling even with complex or non-standard architectur
 For clearer and more interpretable results, use the `thop.clever_format` function. This formats the raw MACs and parameter counts into human-readable strings (e.g., GigaMACs, MegaParams):
 
 ```python
-from thop import profile, clever_format
 import torch
 from torchvision.models import resnet50
+
+from thop import clever_format, profile
 
 model = resnet50()
 dummy_input = torch.randn(1, 3, 224, 224)
@@ -127,6 +132,7 @@ macs_readable, params_readable = clever_format([macs, params], "%.3f")
 
 print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}")
 ```
+
 This formatting helps in quickly understanding the scale of computational resources required, similar to the metrics provided in our [Ultralytics YOLOv8 documentation](https://docs.ultralytics.com/models/yolov8/).
 
 ## 📊 Results of Recent Models
