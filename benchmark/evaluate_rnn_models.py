@@ -2,7 +2,6 @@
 
 import torch
 import torch.nn as nn
-
 from thop.profile import profile
 
 input_size = 160
