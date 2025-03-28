@@ -53,11 +53,12 @@ dummy_input = torch.randn(1, 3, 224, 224)
 macs, params = profile(model, inputs=(dummy_input,))
 
 print(f"MACs: {macs}, Parameters: {params}")
+# Expected output: MACs: 4139975680.0, Parameters: 25557032.0
 ```
 
 ### Define Custom Rules for Third-Party Modules
 
-If your model includes custom or third-party modules not natively supported by THOP, you can define custom profiling rules using the `custom_ops` argument:
+If your model includes custom or third-party modules not natively supported by THOP, you can define custom profiling rules using the `custom_ops` argument. This allows for accurate profiling even with complex or non-standard architectures, which is useful when working with models like those found in the [Ultralytics models section](https://docs.ultralytics.com/models/).
 
 ```python
 import torch
@@ -109,13 +110,12 @@ dummy_input = torch.randn(1, 3, 224, 224)
 macs, params = profile(model, inputs=(dummy_input,), custom_ops={YourCustomModule: count_your_custom_module})
 
 print(f"Custom MACs: {macs}, Parameters: {params}")
+# Expected output: Custom MACs: 87457792.0, Parameters: 1792.0
 ```
-
-This allows for accurate profiling even with complex or non-standard architectures, which is useful when working with models like those found in the [Ultralytics models section](https://docs.ultralytics.com/models/).
 
 ### Improve Output Readability
 
-For clearer and more interpretable results, use the `thop.clever_format` function. This formats the raw MACs and parameter counts into human-readable strings (e.g., GigaMACs, MegaParams):
+For clearer and more interpretable results, use the `thop.clever_format` function. This formats the raw MACs and parameter counts into human-readable strings (e.g., GigaMACs, MegaParams). This formatting helps in quickly understanding the scale of computational resources required, similar to the metrics provided in our [Ultralytics YOLOv8 documentation](https://docs.ultralytics.com/models/yolov8/).
 
 ```python
 import torch
@@ -131,9 +131,8 @@ macs, params = profile(model, inputs=(dummy_input,))
 macs_readable, params_readable = clever_format([macs, params], "%.3f")
 
 print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}")
+# Expected output: Formatted MACs: 4.140G, Formatted Parameters: 25.557M
 ```
-
-This formatting helps in quickly understanding the scale of computational resources required, similar to the metrics provided in our [Ultralytics YOLOv8 documentation](https://docs.ultralytics.com/models/yolov8/).
 
 ## 📊 Results of Recent Models
 
