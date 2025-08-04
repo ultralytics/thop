@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   CLA:
-    if: github.repository == 'ultralytics/actions'
+    if: github.repository == 'ultralytics/thop'
     runs-on: ubuntu-latest
     steps:
       - name: CLA Assistant
