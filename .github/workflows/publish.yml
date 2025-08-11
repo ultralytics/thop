@@ -92,6 +92,30 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
 
+  sbom:
+    needs: [check, build, publish]
+    if: needs.check.outputs.increment == 'True'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+        env:
+          UV_PROJECT_ENVIRONMENT: sbom-env
+      - uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          output-file: sbom.spdx.json
+          path: sbom-env
+      - run: gh release upload ${{ needs.check.outputs.current_tag }} sbom.spdx.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   notify:
     needs: [check, publish]
     if: always() && needs.check.outputs.increment == 'True'
