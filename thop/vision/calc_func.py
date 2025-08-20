@@ -29,13 +29,18 @@ def calculate_zero_ops():
     return torch.DoubleTensor([0])
 
 
-def calculate_conv2d_flops(input_size: list, output_size: list, kernel_size: list, groups: int, bias: bool = False):
+def calculate_conv2d_flops(
+    input_size: list, output_size: list, kernel_size: list, groups: int, bias: bool = False, transpose: bool = False
+):
     """Calculate FLOPs for a Conv2D layer using input/output sizes, kernel size, groups, and the bias flag."""
     # n, in_c, ih, iw = input_size
     # out_c, in_c, kh, kw = kernel_size
-    in_c = input_size[1]
-    g = groups
-    return l_prod(output_size) * (in_c // g) * l_prod(kernel_size[2:])
+    if transpose:
+        out_c = output_size[1]
+        return l_prod(input_size) * (out_c // groups) * l_prod(kernel_size[2:])
+    else:
+        in_c = input_size[1]
+        return l_prod(output_size) * (in_c // groups) * l_prod(kernel_size[2:])
 
 
 def calculate_conv(bias, kernel_size, output_size, in_channel, group):

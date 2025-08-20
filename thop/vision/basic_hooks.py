@@ -30,6 +30,7 @@ def count_convNd(m: _ConvNd, x, y: torch.Tensor):
         kernel_size=list(m.weight.shape),
         groups=m.groups,
         bias=m.bias,
+        transpose=False,
     )
     # N x Cout x H x W x  (Cin x Kw x Kh + bias)
     # m.total_ops += calculate_conv(
@@ -39,6 +40,20 @@ def count_convNd(m: _ConvNd, x, y: torch.Tensor):
     #     m.in_channels,
     #     m.groups,
     # )
+
+
+def count_convtNd(m: _ConvNd, x, y: torch.Tensor):
+    """Calculate and add the number of convolutional operations (FLOPs) for a ConvNd layer to the model's total ops."""
+    x = x[0]
+
+    m.total_ops += calculate_conv2d_flops(
+        input_size=list(x.shape),
+        output_size=list(y.shape),
+        kernel_size=list(m.weight.shape),
+        groups=m.groups,
+        bias=m.bias,
+        transpose=True,
+    )
 
 
 def count_convNd_ver2(m: _ConvNd, x, y: torch.Tensor):
