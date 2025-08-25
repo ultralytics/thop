@@ -17,7 +17,7 @@ THOP offers an intuitive API designed to profile PyTorch models by calculating t
 
 Get started with THOP quickly by installing it via pip:
 
-[![PyPI - Version](https://img.shields.io/pypi/v/ultralytics-thop?logo=pypi&logoColor=white)](https://pypi.org/project/ultralytics-thop/) [![Downloads](https://static.pepy.tech/badge/ultralytics-thop)](https://www.pepy.tech/projects/ultralytics-thop) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ultralytics-thop?logo=python&logoColor=gold)](https://pypi.org/project/ultralytics-thop/)
+[![PyPI - Version](https://img.shields.io/pypi/v/ultralytics-thop?logo=pypi&logoColor=white)](https://pypi.org/project/ultralytics-thop/) [![Downloads](https://static.pepy.tech/badge/ultralytics-thop)](https://clickpy.clickhouse.com/dashboard/ultralytics-thop) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ultralytics-thop?logo=python&logoColor=gold)](https://pypi.org/project/ultralytics-thop/)
 
 ```bash
 pip install ultralytics-thop
@@ -35,7 +35,7 @@ This ensures you have the most recent version, incorporating the latest improvem
 
 ### Basic Usage
 
-Profiling a standard PyTorch model like [ResNet50](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html) is straightforward. Import the necessary libraries, load your model and a sample input tensor, then use the `profile` function:
+Profiling a standard PyTorch model like [ResNet50](https://docs.pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html) is straightforward. Import the necessary libraries, load your model and a sample input tensor, then use the `profile` function:
 
 ```python
 import torch
@@ -191,7 +191,7 @@ The table below showcases the parameters and MACs for several popular [computer 
 
 ## 🙌 Contribute
 
-We actively welcome and encourage community contributions to make THOP even better! Whether it's adding support for new [PyTorch layers](https://pytorch.org/docs/stable/nn.html), improving existing calculations, enhancing documentation, or fixing bugs, your input is valuable. Please see our [Contributing Guide](https://docs.ultralytics.com/help/contributing/) for detailed instructions on how to participate. Together, we can ensure THOP remains a state-of-the-art tool for the [machine learning](https://www.ultralytics.com/glossary/machine-learning-ml) community. Don't hesitate to share your feedback and suggestions!
+We actively welcome and encourage community contributions to make THOP even better! Whether it's adding support for new [PyTorch layers](https://docs.pytorch.org/docs/stable/nn.html), improving existing calculations, enhancing documentation, or fixing bugs, your input is valuable. Please see our [Contributing Guide](https://docs.ultralytics.com/help/contributing/) for detailed instructions on how to participate. Together, we can ensure THOP remains a state-of-the-art tool for the [machine learning](https://www.ultralytics.com/glossary/machine-learning-ml) community. Don't hesitate to share your feedback and suggestions!
 
 ## 📜 License
 
