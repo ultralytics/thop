@@ -17,7 +17,7 @@ class TestUtils:
         print(flops, params)
         assert flops == n * in_c * out_c
 
-    def test_matmul_case2(self):
+    def test_matmul_case3(self):  # Note renamed to case3 by Glenn Jocher as duplicated above function name
         """Tests matrix multiplication to profile FLOPs and parameters of nn.Linear layer using random dimensions."""
         for _ in range(10):
             n, in_c, out_c = torch.randint(1, 500, (3,)).tolist()
