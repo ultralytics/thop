@@ -2,10 +2,12 @@
 
 import logging
 
+import torch
 import torch.nn as nn
+from thop.vision.calc_func import calculate_parameters, calculate_zero_ops, calculate_conv2d_flops, calculate_conv, \
+    calculate_norm, calculate_relu, calculate_relu_flops, calculate_softmax, calculate_avgpool, calculate_adaptive_avg, \
+    calculate_upsample, calculate_linear
 from torch.nn.modules.conv import _ConvNd
-
-from .calc_func import *
 
 multiply_adds = 1
 

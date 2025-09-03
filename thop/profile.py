@@ -1,7 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-from thop.rnn_hooks import *
-from thop.vision.basic_hooks import *
+from thop.rnn_hooks import count_gru, count_gru_cell, count_lstm, count_lstm_cell, count_rnn, count_rnn_cell, torch
+from thop.vision.basic_hooks import count_adap_avgpool, count_avgpool, count_convNd, count_convtNd, count_linear, count_normalization, count_parameters, count_prelu, count_relu, count_softmax, count_upsample, logging, nn, zero_ops
 
 from .utils import prRed
 
