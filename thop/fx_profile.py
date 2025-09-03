@@ -6,6 +6,11 @@ from distutils.version import LooseVersion
 import torch
 import torch as th
 import torch.nn as nn
+from torch.fx import symbolic_trace
+from torch.fx.passes.shape_prop import ShapeProp
+
+from .utils import prRed, prYellow
+from .vision.calc_func import calculate_conv
 
 if LooseVersion(torch.__version__) < LooseVersion("1.8.0"):
     logging.warning(
@@ -38,9 +43,6 @@ def count_fn_linear(input_shapes, output_shapes, *args, **kwargs):
     if "bias" in kwargs:
         flops += output_shapes[0].numel()
     return flops
-
-
-from .vision.calc_func import calculate_conv
 
 
 def count_fn_conv2d(input_shapes, output_shapes, *args, **kwargs):
@@ -117,11 +119,6 @@ for k in zero_ops:
     count_map[k] = count_zero_ops
 
 missing_maps = {}
-
-from torch.fx import symbolic_trace
-from torch.fx.passes.shape_prop import ShapeProp
-
-from .utils import prRed, prYellow
 
 
 def null_print(*args, **kwargs):
