@@ -208,11 +208,16 @@ def fx_profile(mod: nn.Module, input: th.Tensor, verbose=False):
 if __name__ == "__main__":
 
     class MyOP(nn.Module):
+        """Custom operator that performs a simple forward pass dividing input by 1."""
+
         def forward(self, input):
             """Performs forward pass on given input data."""
             return input / 1
 
+
     class MyModule(torch.nn.Module):
+        """Neural network module with two linear layers and a custom MyOP operator."""
+
         def __init__(self):
             """Initializes MyModule with two linear layers and a custom MyOP operator."""
             super().__init__()
@@ -227,6 +232,7 @@ if __name__ == "__main__":
             out1 = self.linear1(x)
             out2 = self.linear2(x).clamp(min=0.0, max=1.0)
             return self.myop(out1 + out2)
+
 
     net = MyModule()
     data = th.randn(20, 5)
