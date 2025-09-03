@@ -214,7 +214,6 @@ if __name__ == "__main__":
             """Performs forward pass on given input data."""
             return input / 1
 
-
     class MyModule(torch.nn.Module):
         """Neural network module with two linear layers and a custom MyOP operator."""
 
@@ -232,7 +231,6 @@ if __name__ == "__main__":
             out1 = self.linear1(x)
             out2 = self.linear2(x).clamp(min=0.0, max=1.0)
             return self.myop(out1 + out2)
-
 
     net = MyModule()
     data = th.randn(20, 5)
