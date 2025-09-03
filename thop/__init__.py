@@ -2,10 +2,10 @@
 
 __version__ = "2.0.17"
 
+import torch
+
 from .profile import profile, profile_origin
 from .utils import clever_format
-
-import torch
 
 default_dtype = torch.float64
 
