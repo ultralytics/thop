@@ -94,7 +94,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
 
         if hasattr(m, "total_ops") or hasattr(m, "total_params"):
             logging.warning(
-                f"Either .total_ops or .total_params is already defined in {str(m)}. "
+                f"Either .total_ops or .total_params is already defined in {m!s}. "
                 "Be careful, it might change your code's behavior."
             )
 

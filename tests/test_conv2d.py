@@ -21,7 +21,7 @@ class TestUtils:
 
         _, _, oh, ow = out.shape
         print(f"Conv2d: in={ih}x{iw}, kernel={kh}x{kw}, stride={s}, padding={p}, out={oh}x{ow}")
-        macs, params = profile(net, inputs=(data,))
+        macs, _params = profile(net, inputs=(data,))
         assert macs == 810000, f"{macs} v.s. 810000"
 
     def test_conv2d(self):
@@ -36,7 +36,7 @@ class TestUtils:
 
         _, _, oh, ow = out.shape
         print(f"Conv2d: in={ih}x{iw}, kernel={kh}x{kw}, stride={s}, padding={p}, out={oh}x{ow}")
-        macs, params = profile(net, inputs=(data,))
+        macs, _params = profile(net, inputs=(data,))
         assert macs == 810000, f"{macs} v.s. 810000"
 
     def test_conv2d_random(self):
@@ -54,7 +54,7 @@ class TestUtils:
 
             _, _, oh, ow = out.shape
             print(f"Conv2d: in={ih}x{iw}, kernel={kh}x{kw}, stride={s}, padding={p}, out={oh}x{ow}")
-            macs, params = profile(net, inputs=(data,))
+            macs, _params = profile(net, inputs=(data,))
             assert macs == n * out_c * oh * ow // g * in_c * kh * kw, (
                 f"{macs} v.s. {n * out_c * oh * ow // g * in_c * kh * kw}"
             )
