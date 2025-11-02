@@ -46,8 +46,7 @@ def count_fn_linear(input_shapes, output_shapes, *args, **kwargs):
 
 
 def count_fn_conv2d(input_shapes, output_shapes, *args, **kwargs):
-    """Calculates total operations (FLOPs) for a 2D conv layer based on input and output shapes using
-    `calculate_conv`.
+    """Calculates total operations (FLOPs) for a 2D conv layer based on input and output shapes using `calculate_conv`.
     """
     _inputs, _weight, _bias, _stride, _padding, _dilation, groups = args
     if len(input_shapes) == 2:
