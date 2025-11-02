@@ -9,8 +9,6 @@ Welcome to the [THOP](https://github.com/ultralytics/thop) repository, your comp
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
 [![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://reddit.com/r/ultralytics)
 
-
-
 ## 📄 Description
 
 THOP offers an intuitive API designed to profile PyTorch models by calculating the total number of MACs and parameters. This functionality is vital for assessing the computational efficiency and memory footprint of deep learning models, helping developers optimize performance for deployment, especially on [edge devices](https://www.ultralytics.com/glossary/edge-ai). Understanding these metrics is key to selecting the right model architecture, a topic explored in our [model comparison pages](https://docs.ultralytics.com/compare/).

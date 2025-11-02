@@ -173,8 +173,7 @@ class TestUtils:
             assert macs == expected_macs, f"ConvTranspose2d MACs: {macs} v.s. {expected_macs}"
 
     def test_conv_vs_convtranspose_symmetry(self):
-        """
-        Test that Conv2d and ConvTranspose2d with symmetric configurations have equal MAC counts.
+        """Test that Conv2d and ConvTranspose2d with symmetric configurations have equal MAC counts.
 
         Test case: Conv2d downsamples 4x4 -> 2x2, ConvTranspose2d upsamples 2x2 -> 4x4.
         """
