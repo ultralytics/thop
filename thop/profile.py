@@ -218,7 +218,7 @@ def profile(
 
     def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
         """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
-        total_ops, total_params = module.total_ops.item(), 0
+        total_ops, total_params = module.total_ops.item(), module.total_params.item()
         ret_dict = {}
         for n, m in module.named_children():
             # if not hasattr(m, "total_ops") and not hasattr(m, "total_params"):  # and len(list(m.children())) > 0:
