@@ -88,9 +88,15 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
     if report_missing:
         verbose = True
 
+    seen = set()
+
     def add_hooks(m):
         if list(m.children()):
             return
+
+        if id(m) in seen:
+            return
+        seen.add(id(m))
 
         if hasattr(m, "total_ops") or hasattr(m, "total_params"):
             logging.warning(
@@ -177,8 +183,14 @@ def profile(
         # overwrite `verbose` option when enable report_missing
         verbose = True
 
+    seen = set()
+
     def add_hooks(m: nn.Module):
         """Registers hooks to a neural network module to track total operations and parameters."""
+        if id(m) in seen:
+            return
+        seen.add(id(m))
+
         m.register_buffer("total_ops", torch.zeros(1, dtype=torch.float64))
         m.register_buffer("total_params", torch.zeros(1, dtype=torch.float64))
 
@@ -216,11 +228,17 @@ def profile(
     with torch.no_grad():
         model(*inputs)
 
+    counted = set()
+
     def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
         """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
         total_ops, total_params = module.total_ops.item(), 0
         ret_dict = {}
         for n, m in module.named_children():
+            if id(m) in counted:
+                ret_dict[n] = (0, 0, {})
+                continue
+            counted.add(id(m))
             # if not hasattr(m, "total_ops") and not hasattr(m, "total_params"):  # and len(list(m.children())) > 0:
             #     m_ops, m_params = dfs_count(m, prefix=prefix + "\t")
             # else:
