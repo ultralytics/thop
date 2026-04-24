@@ -39,6 +39,24 @@ class TestUtils:
         macs, _params = profile(net, inputs=(data,))
         assert macs == 810000, f"{macs} v.s. 810000"
 
+    def test_conv2d_root_params(self):
+        """Tests that a root Conv2D layer includes its own parameters."""
+        net = nn.Conv2d(3, 10, kernel_size=3, bias=True)
+        data = torch.randn(1, 3, 224, 224)
+
+        _macs, params = profile(net, inputs=(data,))
+        expected_params = sum(p.numel() for p in net.parameters())
+        assert params == expected_params, f"{params} v.s. {expected_params}"
+
+    def test_conv2d_sequential_params(self):
+        """Tests that a root Sequential module does not double-count child Conv2D parameters."""
+        net = nn.Sequential(nn.Conv2d(3, 10, kernel_size=3, bias=True))
+        data = torch.randn(1, 3, 224, 224)
+
+        _macs, params = profile(net, inputs=(data,))
+        expected_params = sum(p.numel() for p in net.parameters())
+        assert params == expected_params, f"{params} v.s. {expected_params}"
+
     def test_conv2d_random(self):
         """Test Conv2D layer with random parameters and validate the computed MACs and parameters using 'profile'."""
         for _ in range(10):

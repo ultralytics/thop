@@ -26,7 +26,7 @@ multiply_adds = 1
 
 def count_parameters(m, x, y):
     """Calculate and return the total number of learnable parameters in a given PyTorch model."""
-    m.total_params[0] = calculate_parameters(m.parameters())
+    m.total_params[0] = calculate_parameters(m.parameters(recurse=False))
 
 
 def zero_ops(m, x, y):
