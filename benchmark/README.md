@@ -39,4 +39,4 @@ This approach provides a standardized and reproducible way to compare the theore
 
 ## 🤝 Contributing
 
-Contributions to improve this documentation or the underlying library are always welcome! If you have suggestions or find inaccuracies, please refer to the main Ultralytics repository guidelines for contributing at [https://github.com/ultralytics/ultralytics](https://github.com/ultralytics/ultralytics). We appreciate your help in making our tools and resources better for the entire computer vision community. Check out our [contribution guide](https://docs.ultralytics.com/help/contributing/) for more detailed information on how to get involved.
+Contributions to improve this documentation or the underlying library are always welcome! If you have suggestions or find inaccuracies, please open an issue or pull request in the [THOP repository](https://github.com/ultralytics/thop). We appreciate your help in making our tools and resources better for the entire computer vision community. Check out our [contribution guide](https://docs.ultralytics.com/help/contributing/) for more detailed information on how to get involved.
