@@ -2,7 +2,7 @@
 
 # 🚀 THOP: PyTorch-OpCounter
 
-Welcome to the [THOP](https://github.com/ultralytics/thop) repository, your comprehensive solution for profiling [PyTorch](https://pytorch.org/) models by computing the number of Multiply-Accumulate Operations (MACs) and parameters. Developed by Ultralytics, this tool is essential for [deep learning](https://www.ultralytics.com/glossary/deep-learning-dl) practitioners aiming to evaluate model efficiency and performance, crucial aspects discussed in our [model training tips guide](https://docs.ultralytics.com/guides/model-training-tips/).
+Welcome to the [THOP](https://github.com/ultralytics/thop) repository, your comprehensive solution for profiling [PyTorch](https://pytorch.org/) models by computing the number of Multiply-Accumulate Operations (MACs) and parameters. Maintained by Ultralytics, this tool is essential for [deep learning](https://www.ultralytics.com/glossary/deep-learning-dl) practitioners aiming to evaluate model efficiency and performance, crucial aspects discussed in our [model training tips guide](https://docs.ultralytics.com/guides/model-training-tips/).
 
 [![Ultralytics Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
@@ -195,7 +195,7 @@ We actively welcome and encourage community contributions to make THOP even bett
 
 ## 📜 License
 
-THOP is distributed under the [AGPL-3.0 License](https://www.gnu.org/licenses/agpl-3.0.en.html). This license promotes open collaboration and sharing of improvements. For complete details, please refer to the [LICENSE](https://github.com/ultralytics/thop/blob/main/LICENSE) file included in the repository. Understanding the license is important before integrating THOP into your projects, especially for commercial applications which may require an [Enterprise License](https://www.ultralytics.com/license).
+THOP is distributed under the [AGPL-3.0 License](https://opensource.org/license/agpl-3.0). This license promotes open collaboration and sharing of improvements. For complete details, please refer to the [LICENSE](https://github.com/ultralytics/thop/blob/main/LICENSE) file included in the repository. Understanding the license is important before integrating THOP into your projects, especially for commercial applications which may require an [Enterprise License](https://www.ultralytics.com/license).
 
 ## 📧 Contact
 
