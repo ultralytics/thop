@@ -45,7 +45,9 @@ python -m pytest tests/
 # Run one test
 python -m pytest tests/test_conv2d.py::TestUtils::test_conv2d_no_bias
 
-# Format/lint — mirrors what ultralytics/actions@main runs in format.yml (its action.yml is the source of truth)
+# Format/lint — the main Ruff/Prettier steps from ultralytics/actions@main invoked by format.yml (its action.yml is
+# the source of truth; CI additionally runs docstring and Markdown code-block formatters, and its auto-format commit
+# on the PR covers anything missed locally)
 ruff check --fix --unsafe-fixes --extend-select F,I,D,UP,RUF,FA --target-version py39 --ignore D100,D104,D203,D205,D212,D213,D401,D406,D407,D413,RUF001,RUF002,RUF012 .
 ruff format --line-length 120 .
 npx prettier --write --print-width 120 "**/*.{yml,yaml,json,md}"
