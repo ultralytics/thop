@@ -3,7 +3,7 @@
 import logging
 
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.nn.modules.conv import _ConvNd
 
 from thop.vision.calc_func import (
