@@ -70,11 +70,13 @@ from thop import profile
 # Define your custom module
 class YourCustomModule(nn.Module):
     def __init__(self):
+        """Initialize the example convolution layer."""
         super().__init__()
         # Define layers, e.g., a convolution
         self.conv = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
+        """Apply the example convolution layer."""
         return self.conv(x)
 
 

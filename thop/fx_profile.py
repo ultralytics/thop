@@ -13,7 +13,7 @@ from .utils import prRed, prYellow
 from .vision.calc_func import calculate_conv
 
 if LooseVersion(torch.__version__) < LooseVersion("1.8.0"):
-    logging.warning(
+    logging.getLogger(__name__).warning(
         f"torch.fx requires version higher than 1.8.0. But You are using an old version PyTorch {torch.__version__}. "
     )
 
