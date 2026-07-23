@@ -5,7 +5,7 @@ from distutils.version import LooseVersion
 
 import torch
 import torch as th
-import torch.nn as nn
+from torch import nn
 from torch.fx import symbolic_trace
 from torch.fx.passes.shape_prop import ShapeProp
 
