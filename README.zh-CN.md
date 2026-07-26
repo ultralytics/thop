@@ -2,20 +2,20 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-# 🚀 THOP: PyTorch-OpCounter
+# 🚀 THOP：PyTorch 运算量分析工具
 
-[THOP](https://github.com/ultralytics/thop) profiles [PyTorch](https://pytorch.org/) models by counting Multiply-Accumulate Operations (MACs) and parameters. It is lightweight, easy to extend, and maintained by [Ultralytics](https://www.ultralytics.com/).
+[THOP](https://github.com/ultralytics/thop) 用于分析 [PyTorch](https://pytorch.org/) 模型的乘加运算次数（MACs）和参数量。它轻量、易扩展，并由 [Ultralytics](https://www.ultralytics.com/) 维护。
 
 [![Ultralytics Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
 [![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://reddit.com/r/ultralytics)
 
-## 📄 Description
+## 📄 简介
 
-THOP measures a model with one forward pass, making it useful for comparing architecture complexity before training or deployment. It includes counting rules for common convolutional, normalization, pooling, activation, linear, and recurrent layers, with support for custom rules.
+THOP 通过一次前向传播测量模型，适合在训练或部署前比较不同架构的复杂度。它为常见的卷积、归一化、池化、激活、线性和循环层提供计数规则，也支持自定义规则。
 
-## 📦 Installation
+## 📦 安装
 
 [![PyPI - Version](https://img.shields.io/pypi/v/ultralytics-thop?logo=pypi&logoColor=white)](https://pypi.org/project/ultralytics-thop/) [![Downloads](https://static.pepy.tech/badge/ultralytics-thop)](https://clickpy.clickhouse.com/dashboard/ultralytics-thop) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ultralytics-thop?logo=python&logoColor=gold)](https://pypi.org/project/ultralytics-thop/)
 
@@ -23,17 +23,17 @@ THOP measures a model with one forward pass, making it useful for comparing arch
 pip install ultralytics-thop
 ```
 
-To install the latest development version:
+安装最新开发版本：
 
 ```bash
 pip install --upgrade git+https://github.com/ultralytics/thop.git
 ```
 
-## 🛠️ How to Use
+## 🛠️ 使用方法
 
-### Basic Usage
+### 基本用法
 
-Pass the model and a tuple of example inputs to `profile()`:
+将模型和示例输入元组传给 `profile()`：
 
 ```python
 import torch
@@ -46,12 +46,12 @@ inputs = (torch.randn(1, 3, 224, 224),)
 macs, params = profile(model, inputs=inputs)
 
 print(f"MACs: {macs}, Parameters: {params}")
-# Expected output: MACs: 4133742592.0, Parameters: 25557032.0
+# 预期输出：MACs: 4133742592.0, Parameters: 25557032.0
 ```
 
-### Define Custom Rules for Third-Party Modules
+### 为第三方模块定义自定义规则
 
-Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`.
+将不受支持的模块类型映射到前向钩子函数。钩子函数接收模块、输入和输出，并将运算量累加到 `module.total_ops`。
 
 ```python
 import torch
@@ -61,7 +61,7 @@ from thop import profile
 
 
 def count_silu(module, inputs, output):
-    """Count one operation per output element as a simple example."""
+    """作为简单示例，将每个输出元素计为一次运算。"""
     module.total_ops += output.numel()
 
 
@@ -70,12 +70,12 @@ inputs = (torch.randn(1, 3, 224, 224),)
 macs, params = profile(model, inputs=inputs, custom_ops={nn.SiLU: count_silu})
 
 print(f"Custom MACs: {macs}, Parameters: {params}")
-# Expected output: Custom MACs: 89915392.0, Parameters: 1792.0
+# 预期输出：Custom MACs: 89915392.0, Parameters: 1792.0
 ```
 
-### Improve Output Readability
+### 提升输出可读性
 
-Use `clever_format()` to convert raw counts into human-readable values:
+使用 `clever_format()` 将原始计数转换为易读格式：
 
 ```python
 import torch
@@ -89,14 +89,14 @@ macs, params = profile(model, inputs=inputs)
 macs_readable, params_readable = clever_format([macs, params], "%.3f")
 
 print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}")
-# Expected output: Formatted MACs: 4.134G, Formatted Parameters: 25.557M
+# 预期输出：Formatted MACs: 4.134G, Formatted Parameters: 25.557M
 ```
 
-## 📊 Results of Recent Models
+## 📊 近期模型结果
 
-The following detection models were profiled at 640 × 640 from their fused architecture definitions. Install `ultralytics`, then run `python benchmark/evaluate_famous_models.py` to reproduce the table without downloading model weights. FLOPs are often approximated as twice the MAC count.
+下列目标检测模型使用融合后的架构定义和 640 × 640 输入进行分析。安装 `ultralytics` 后，运行 `python benchmark/evaluate_famous_models.py` 即可复现此表，无需下载模型权重。FLOPs 通常可近似为 MACs 的两倍。
 
-| Model                                                  | Params (M) | MACs (G) |
+| 模型                                                   | 参数量 (M) | MACs (G) |
 | ------------------------------------------------------ | ---------- | -------- |
 | [YOLOv8n](https://docs.ultralytics.com/models/yolov8/) | 3.15       | 4.37     |
 | YOLOv8s                                                | 11.16      | 14.30    |
@@ -114,14 +114,14 @@ The following detection models were profiled at 640 × 640 from their fused arch
 | YOLO26l                                                | 24.81      | 43.22    |
 | YOLO26x                                                | 55.73      | 96.94    |
 
-## 🙌 Contribute
+## 🙌 贡献
 
-Contributions are welcome, including new counting rules, accuracy improvements, tests, and documentation. See the [Ultralytics Contributing Guide](https://docs.ultralytics.com/help/contributing/) to get started.
+欢迎贡献新的计数规则、精度改进、测试和文档。请参阅 [Ultralytics 贡献指南](https://docs.ultralytics.com/help/contributing/)开始参与。
 
-## 📜 License
+## 📜 许可证
 
-THOP is distributed under the [AGPL-3.0 License](LICENSE). For commercial use, see the [Ultralytics Enterprise License](https://www.ultralytics.com/license).
+THOP 采用 [AGPL-3.0 许可证](LICENSE)发布。如需商业使用，请参阅 [Ultralytics 企业许可证](https://www.ultralytics.com/license)。
 
-## 📧 Contact
+## 📧 联系方式
 
-Report bugs and request features through [GitHub Issues](https://github.com/ultralytics/thop/issues). For questions and community support, join [Ultralytics Discord](https://discord.com/invite/ultralytics).
+请通过 [GitHub Issues](https://github.com/ultralytics/thop/issues) 报告错误或提出功能建议。如需提问和社区支持，请加入 [Ultralytics Discord](https://discord.com/invite/ultralytics)。
