@@ -62,7 +62,7 @@ If your model includes custom or third-party modules not natively supported by T
 
 ```python
 import torch
-import torch.nn as nn
+from torch import nn
 
 from thop import profile
 
