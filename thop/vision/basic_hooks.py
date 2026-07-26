@@ -9,24 +9,17 @@ from torch.nn.modules.conv import _ConvNd
 from thop.vision.calc_func import (
     calculate_adaptive_avg,
     calculate_avgpool,
-    calculate_conv,
     calculate_conv2d_flops,
     calculate_linear,
     calculate_norm,
-    calculate_parameters,
-    calculate_relu,
     calculate_relu_flops,
     calculate_softmax,
     calculate_upsample,
     calculate_zero_ops,
+    l_prod,
 )
 
 multiply_adds = 1
-
-
-def count_parameters(m, x, y):
-    """Calculate and return the total number of learnable parameters in a given PyTorch model."""
-    m.total_params[0] = calculate_parameters(m.parameters(recurse=False))
 
 
 def zero_ops(m, x, y):
@@ -70,22 +63,6 @@ def count_convtNd(m: _ConvNd, x, y: torch.Tensor):
     )
 
 
-def count_convNd_ver2(m: _ConvNd, x, y: torch.Tensor):
-    """Calculates and updates total operations (FLOPs) for a convolutional layer in a PyTorch model."""
-    x = x[0]
-
-    # N x H x W (exclude Cout)
-    output_size = torch.zeros(y.size()[:1] + y.size()[2:]).numel()
-    # # Cout x Cin x Kw x Kh
-    # kernel_ops = m.weight.nelement()
-    # if m.bias is not None:
-    #     # Cout x 1
-    #     kernel_ops += + m.bias.nelement()
-    # # x N x H x W x Cout x (Cin x Kw x Kh + bias)
-    # m.total_ops += torch.DoubleTensor([int(output_size * kernel_ops)])
-    m.total_ops += calculate_conv(m.bias.nelement(), m.weight.nelement(), output_size)
-
-
 def count_normalization(m: nn.modules.batchnorm._BatchNorm, x, y):
     """Calculate and add the FLOPs for a batch normalization layer, including elementwise and affine operations."""
     # https://github.com/Lyken17/pytorch-OpCounter/issues/124
@@ -112,9 +89,8 @@ def count_prelu(m, x, y):
     """Calculate and update the total operation counts for a PReLU layer using input element number."""
     x = x[0]
 
-    nelements = x.numel()
     if not m.training:
-        m.total_ops += calculate_relu(nelements)
+        m.total_ops += x.numel()
 
 
 def count_relu(m, x, y):
@@ -142,8 +118,7 @@ def count_avgpool(m, x, y):
 
 def count_adap_avgpool(m, x, y):
     """Calculate and update the total operation counts for an AdaptiveAvgPool layer using kernel and element counts."""
-    kernel = torch.div(torch.DoubleTensor([*(x[0].shape[2:])]), torch.DoubleTensor([*(y.shape[2:])]))
-    total_add = torch.prod(kernel)
+    total_add = l_prod(i / o for i, o in zip(x[0].shape[2:], y.shape[2:]))
     num_elements = y.numel()
     m.total_ops += calculate_adaptive_avg(total_add, num_elements)
 

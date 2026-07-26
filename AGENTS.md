@@ -58,7 +58,9 @@ npx prettier --write --print-width 120 "**/*.{yml,yaml,json,md}"
 
 ## Architecture
 
-THOP (PyPI package `ultralytics-thop`, import name `thop`) computes MACs and parameter counts of PyTorch models via forward hooks. `thop/profile.py` holds the `register_hooks` dict mapping `nn.Module` types to counting functions and exposes the two entry points: `profile()` (DFS traversal that counts each leaf module once) and the legacy `profile_origin()`. Counting functions live in `thop/vision/basic_hooks.py` (formulas in `thop/vision/calc_func.py`) and `thop/rnn_hooks.py` for RNN/GRU/LSTM; `thop/utils.py` provides `clever_format`. `thop/fx_profile.py` is an alternative `torch.fx`-based profiler not exported from `thop/__init__.py`. `benchmark/` scripts regenerate the README results table.
+THOP (PyPI package `ultralytics-thop`, import name `thop`) computes MACs and parameter counts of PyTorch models via forward hooks. `thop/profile.py` holds the `register_hooks` dict mapping `nn.Module` types to counting functions and exposes the two entry points: `profile()` (DFS traversal that counts each leaf module once) and the legacy `profile_origin()`. Counting functions live in `thop/vision/basic_hooks.py` (formulas in `thop/vision/calc_func.py`) and `thop/rnn_hooks.py` for RNN/GRU/LSTM; `thop/utils.py` provides `clever_format`. `benchmark/` scripts regenerate the README results table.
+
+Hooks accumulate into plain `total_ops`/`total_params` int attributes written straight into each module's `__dict__` (not `register_buffer`), and `profile()` registers a single fused forward hook per module. Counting functions must therefore return plain Python numbers, never tensors.
 
 Releases are gated in `publish.yml`: it runs on every push to main but only for actor `glenn-jocher`, and compares `thop.__version__` (in `thop/__init__.py`, read dynamically by setuptools) against PyPI via ultralytics-actions `check_pypi_version`. If the local version is ahead it tags `v<version>`, creates an AI-summarized GitHub release, builds, publishes to PyPI via trusted publishing, uploads an SBOM, and notifies Slack — so merging a version bump to main IS the release trigger.
 
