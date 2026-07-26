@@ -1,6 +1,6 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-__version__ = "2.0.22"
+__version__ = "2.1.0"
 
 import torch
 

@@ -16,7 +16,6 @@ from thop.vision.basic_hooks import (
     count_convtNd,
     count_linear,
     count_normalization,
-    count_parameters,
     count_prelu,
     count_relu,
     count_softmax,
@@ -27,6 +26,7 @@ from thop.vision.basic_hooks import (
 )
 
 from .utils import prRed
+from .vision.calc_func import calculate_parameters
 
 default_dtype = torch.float64
 
@@ -182,11 +182,11 @@ def profile(
         if m in handler_collection:  # model.apply() revisits modules shared by several parents, e.g. a common act
             return
 
-        m.register_buffer("total_ops", torch.zeros(1, dtype=torch.float64))
-        m.register_buffer("total_params", torch.zeros(1, dtype=torch.float64))
-
-        # for p in m.parameters():
-        #     m.total_params += torch.DoubleTensor([p.numel()])
+        # plain int attributes, not float64 buffers: buffer reads go through nn.Module.__getattr__ and every
+        # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
+        # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
+        m.__dict__["total_ops"] = 0
+        m.__dict__["total_params"] = 0
 
         m_type = type(m)
 
@@ -205,26 +205,31 @@ def profile(
                 prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
 
         if fn is not None:
-            handler_collection[m] = (
-                m.register_forward_hook(fn),
-                m.register_forward_hook(count_parameters),
-            )
+            # One hook, not two: every registered hook forces nn.Module.__call__ down its slow path, so the op
+            # rule and the parameter tally share a single callback. Parameters cannot change during a forward
+            # pass, so the count is taken once here rather than recomputed on each call.
+            nparams = calculate_parameters(m.parameters(recurse=False))
+
+            def counter(m, x, y, fn=fn, nparams=nparams):
+                """Applies the module's op-counting rule and records its parameter count."""
+                fn(m, x, y)
+                m.__dict__["total_params"] = nparams
+
+            handler_collection[m] = m.register_forward_hook(counter)
         types_collection.add(m_type)
 
     counted = set()
 
     def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
         """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
-        total_ops, total_params = module.total_ops.item(), module.total_params.item()
+        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the documented
+        # `m.total_ops += torch.DoubleTensor([macs])` recipe does, and callers are owed plain Python numbers
+        total_ops, total_params = float(module.total_ops), float(module.total_params)
         ret_dict = {}
         for n, m in module.named_children():
-            # if not hasattr(m, "total_ops") and not hasattr(m, "total_params"):  # and len(list(m.children())) > 0:
-            #     m_ops, m_params = dfs_count(m, prefix=prefix + "\t")
-            # else:
-            #     m_ops, m_params = m.total_ops, m.total_params
             next_dict = {}
             if m in handler_collection and not isinstance(m, (nn.Sequential, nn.ModuleList)):
-                m_ops, m_params = m.total_ops.item(), m.total_params.item()
+                m_ops, m_params = float(m.total_ops), float(m.total_params)
             else:
                 m_ops, m_params, next_dict = dfs_count(m, prefix=prefix + "\t")
             ret_dict[n] = (m_ops, m_params, next_dict)
@@ -247,12 +252,11 @@ def profile(
     finally:  # no failure, at any stage, may leave hooks or buffers behind
         # reset model to original status
         model.train(prev_training_status)
-        for op_handler, params_handler in handler_collection.values():
-            op_handler.remove()
-            params_handler.remove()
-        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary buffers
-            m._buffers.pop("total_ops", None)
-            m._buffers.pop("total_params", None)
+        for handler in handler_collection.values():
+            handler.remove()
+        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attributes
+            m.__dict__.pop("total_ops", None)
+            m.__dict__.pop("total_params", None)
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict

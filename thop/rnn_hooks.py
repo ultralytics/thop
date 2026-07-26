@@ -21,7 +21,7 @@ def count_rnn_cell(m: nn.RNNCell, x: torch.Tensor, y: torch.Tensor):
     batch_size = x[0].size(0)
     total_ops *= batch_size
 
-    m.total_ops += torch.DoubleTensor([int(total_ops)])
+    m.total_ops += int(total_ops)
 
 
 def _count_gru_cell(input_size, hidden_size, bias=True):
@@ -55,7 +55,7 @@ def count_gru_cell(m: nn.GRUCell, x: torch.Tensor, y: torch.Tensor):
     batch_size = x[0].size(0)
     total_ops *= batch_size
 
-    m.total_ops += torch.DoubleTensor([int(total_ops)])
+    m.total_ops += int(total_ops)
 
 
 def _count_lstm_cell(input_size, hidden_size, bias=True):
@@ -88,7 +88,7 @@ def count_lstm_cell(m: nn.LSTMCell, x: torch.Tensor, y: torch.Tensor):
     batch_size = x[0].size(0)
     total_ops *= batch_size
 
-    m.total_ops += torch.DoubleTensor([int(total_ops)])
+    m.total_ops += int(total_ops)
 
 
 def count_rnn(m: nn.RNN, x, y):
@@ -125,7 +125,7 @@ def count_rnn(m: nn.RNN, x, y):
     # batch_size
     total_ops *= batch_size
 
-    m.total_ops += torch.DoubleTensor([int(total_ops)])
+    m.total_ops += int(total_ops)
 
 
 def count_gru(m: nn.GRU, x, y):
@@ -162,7 +162,7 @@ def count_gru(m: nn.GRU, x, y):
     # batch_size
     total_ops *= batch_size
 
-    m.total_ops += torch.DoubleTensor([int(total_ops)])
+    m.total_ops += int(total_ops)
 
 
 def count_lstm(m: nn.LSTM, x, y):
@@ -199,4 +199,4 @@ def count_lstm(m: nn.LSTM, x, y):
     # batch_size
     total_ops *= batch_size
 
-    m.total_ops += torch.DoubleTensor([int(total_ops)])
+    m.total_ops += int(total_ops)
