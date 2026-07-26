@@ -61,7 +61,7 @@ from thop import profile
 
 
 def count_silu(module, inputs, output):
-    """作为简单示例，将每个输出元素计为一次运算。."""
+    """Count one operation per output element as a simple example."""
     module.total_ops += output.numel()
 
 
