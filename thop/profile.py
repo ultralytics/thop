@@ -179,6 +179,9 @@ def profile(
 
     def add_hooks(m: nn.Module):
         """Registers hooks to a neural network module to track total operations and parameters."""
+        if m in handler_collection:  # model.apply() revisits modules shared by several parents, e.g. a common act
+            return
+
         m.register_buffer("total_ops", torch.zeros(1, dtype=torch.float64))
         m.register_buffer("total_params", torch.zeros(1, dtype=torch.float64))
 
@@ -208,13 +211,7 @@ def profile(
             )
         types_collection.add(m_type)
 
-    prev_training_status = model.training
-
-    model.eval()
-    model.apply(add_hooks)
-
-    with torch.no_grad():
-        model(*inputs)
+    counted = set()
 
     def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
         """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
@@ -231,21 +228,31 @@ def profile(
             else:
                 m_ops, m_params, next_dict = dfs_count(m, prefix=prefix + "\t")
             ret_dict[n] = (m_ops, m_params, next_dict)
+            if m in counted:  # a module reached through several parents already accumulated all of its calls
+                continue
+            counted.add(m)
             total_ops += m_ops
             total_params += m_params
         # print(prefix, module._get_name(), (total_ops, total_params))
         return total_ops, total_params, ret_dict
 
-    total_ops, total_params, ret_dict = dfs_count(model)
+    prev_training_status = model.training
 
-    # reset model to original status
-    model.train(prev_training_status)
-    for op_handler, params_handler in handler_collection.values():
-        op_handler.remove()
-        params_handler.remove()
-    for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary buffers
-        m._buffers.pop("total_ops", None)
-        m._buffers.pop("total_params", None)
+    try:
+        model.eval()
+        model.apply(add_hooks)
+        with torch.no_grad():
+            model(*inputs)
+        total_ops, total_params, ret_dict = dfs_count(model)
+    finally:  # no failure, at any stage, may leave hooks or buffers behind
+        # reset model to original status
+        model.train(prev_training_status)
+        for op_handler, params_handler in handler_collection.values():
+            op_handler.remove()
+            params_handler.remove()
+        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary buffers
+            m._buffers.pop("total_ops", None)
+            m._buffers.pop("total_params", None)
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict
