@@ -96,32 +96,58 @@ print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}
 
 下列目标检测模型使用融合后的架构定义和 640 × 640 输入进行分析。安装 `ultralytics` 后，运行 `python benchmark/evaluate_famous_models.py` 即可复现此表，无需下载模型权重。FLOPs 通常可近似为 MACs 的两倍。
 
-| 模型                                                   | 参数量 (M) | MACs (G) |
-| ------------------------------------------------------ | ---------- | -------- |
-| [YOLOv8n](https://docs.ultralytics.com/models/yolov8/) | 3.15       | 4.37     |
-| YOLOv8s                                                | 11.16      | 14.30    |
-| YOLOv8m                                                | 25.89      | 39.47    |
-| YOLOv8l                                                | 43.67      | 82.58    |
-| YOLOv8x                                                | 68.20      | 128.91   |
-| [YOLO11n](https://docs.ultralytics.com/models/yolo11/) | 2.62       | 3.24     |
-| YOLO11s                                                | 9.44       | 10.74    |
-| YOLO11m                                                | 20.09      | 33.99    |
-| YOLO11l                                                | 25.34      | 43.46    |
-| YOLO11x                                                | 56.92      | 97.46    |
-| [YOLO26n](https://docs.ultralytics.com/models/yolo26/) | 2.41       | 2.68     |
-| YOLO26s                                                | 9.50       | 10.35    |
-| YOLO26m                                                | 20.41      | 34.09    |
-| YOLO26l                                                | 24.81      | 43.22    |
-| YOLO26x                                                | 55.73      | 96.94    |
+| 模型                                                                   | 尺寸<br><sup>(像素)</sup> | 参数<br><sup>(百万)</sup> | MACs<br><sup>(十亿)</sup> |
+| ---------------------------------------------------------------------- | ------------------------- | ------------------------- | ------------------------- |
+| [YOLOv8n](https://platform.ultralytics.com/ultralytics/yolov8/yolov8n) | 640                       | 3.15                      | 4.37                      |
+| [YOLOv8s](https://platform.ultralytics.com/ultralytics/yolov8/yolov8s) | 640                       | 11.16                     | 14.30                     |
+| [YOLOv8m](https://platform.ultralytics.com/ultralytics/yolov8/yolov8m) | 640                       | 25.89                     | 39.47                     |
+| [YOLOv8l](https://platform.ultralytics.com/ultralytics/yolov8/yolov8l) | 640                       | 43.67                     | 82.58                     |
+| [YOLOv8x](https://platform.ultralytics.com/ultralytics/yolov8/yolov8x) | 640                       | 68.20                     | 128.91                    |
+| [YOLO11n](https://platform.ultralytics.com/ultralytics/yolo11/yolo11n) | 640                       | 2.62                      | 3.24                      |
+| [YOLO11s](https://platform.ultralytics.com/ultralytics/yolo11/yolo11s) | 640                       | 9.44                      | 10.74                     |
+| [YOLO11m](https://platform.ultralytics.com/ultralytics/yolo11/yolo11m) | 640                       | 20.09                     | 33.99                     |
+| [YOLO11l](https://platform.ultralytics.com/ultralytics/yolo11/yolo11l) | 640                       | 25.34                     | 43.46                     |
+| [YOLO11x](https://platform.ultralytics.com/ultralytics/yolo11/yolo11x) | 640                       | 56.92                     | 97.46                     |
+| [YOLO26n](https://platform.ultralytics.com/ultralytics/yolo26/yolo26n) | 640                       | 2.41                      | 2.68                      |
+| [YOLO26s](https://platform.ultralytics.com/ultralytics/yolo26/yolo26s) | 640                       | 9.50                      | 10.35                     |
+| [YOLO26m](https://platform.ultralytics.com/ultralytics/yolo26/yolo26m) | 640                       | 20.41                     | 34.09                     |
+| [YOLO26l](https://platform.ultralytics.com/ultralytics/yolo26/yolo26l) | 640                       | 24.81                     | 43.22                     |
+| [YOLO26x](https://platform.ultralytics.com/ultralytics/yolo26/yolo26x) | 640                       | 55.73                     | 96.94                     |
 
-## 🙌 贡献
+## 🤝 贡献
 
-欢迎贡献新的计数规则、精度改进、测试和文档。请参阅 [Ultralytics 贡献指南](https://docs.ultralytics.com/help/contributing/)开始参与。
+我们依靠社区协作蓬勃发展！没有像您这样的开发者的贡献，THOP 就不会成为如今优秀的工具。请参阅我们的[贡献指南](https://docs.ultralytics.com/help/contributing)开始贡献。我们也欢迎您的反馈——通过完成我们的[调查问卷](https://www.ultralytics.com/survey?utm_source=github&utm_medium=social&utm_campaign=Survey)分享您的体验。非常**感谢** 🙏 每一位贡献者！
+
+<!-- SVG image from https://opencollective.com/ultralytics/contributors.svg?width=1280 -->
+
+[![Ultralytics open-source contributors](https://raw.githubusercontent.com/ultralytics/assets/main/im/image-contributors.png)](https://github.com/ultralytics/thop/graphs/contributors)
+
+我们期待您的贡献，帮助 Ultralytics 生态系统变得更好！
 
 ## 📜 许可证
 
-THOP 采用 [AGPL-3.0 许可证](LICENSE)发布。如需商业使用，请参阅 [Ultralytics 企业许可证](https://www.ultralytics.com/license)。
+Ultralytics 提供两种许可选项以满足不同需求：
 
-## 📧 联系方式
+- **AGPL-3.0 许可证**：这种经 [OSI 批准](https://opensource.org/license/agpl-3.0)的开源许可证非常适合学生、研究人员和爱好者。它鼓励开放协作和知识共享。有关完整详细信息，请参阅 [LICENSE](https://github.com/ultralytics/thop/blob/main/LICENSE) 文件。
+- **Ultralytics 企业许可证**：适用于开发和生产用途，此许可证允许将 Ultralytics 软件和 AI 模型无缝集成到业务产品和服务中，包括内部工具、自动化工作流和生产部署，绕过 AGPL-3.0 的开源要求。如需开始使用，请通过 [Ultralytics 授权许可](https://www.ultralytics.com/license)与我们联系。
 
-请通过 [GitHub Issues](https://github.com/ultralytics/thop/issues) 报告错误或提出功能建议。如需提问和社区支持，请加入 [Ultralytics Discord](https://discord.com/invite/ultralytics)。
+## 📞 联系方式
+
+有关 THOP 的错误报告和功能请求，请访问 [GitHub Issues](https://github.com/ultralytics/thop/issues)。如有疑问、讨论和社区支持，请加入我们在 [Discord](https://discord.com/invite/ultralytics)、[Reddit](https://www.reddit.com/r/ultralytics/) 和 [Ultralytics 社区论坛](https://community.ultralytics.com/)上的活跃社区。我们随时为您提供有关 Ultralytics 的所有帮助！
+
+<br>
+<div align="center">
+  <a href="https://github.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-github.png" width="3%" alt="Ultralytics GitHub"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.linkedin.com/company/ultralytics/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-linkedin.png" width="3%" alt="Ultralytics LinkedIn"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://twitter.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%" alt="Ultralytics Twitter"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.youtube.com/ultralytics?sub_confirmation=1"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%" alt="Ultralytics YouTube"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.tiktok.com/@ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%" alt="Ultralytics TikTok"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://ultralytics.com/bilibili"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-bilibili.png" width="3%" alt="Ultralytics BiliBili"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://discord.com/invite/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="Ultralytics Discord"></a>
+</div>
