@@ -94,7 +94,7 @@ print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}
 
 ## 📊 近期模型结果
 
-下列目标检测模型使用融合后的架构定义和 640 × 640 输入进行分析。安装 `ultralytics` 后，运行 `python benchmark/evaluate_famous_models.py` 即可复现此表，无需下载模型权重。FLOPs 通常可近似为 MACs 的两倍。
+下列目标检测模型使用 `ultralytics==8.4.106` 中融合后的架构定义和 640 × 640 输入进行分析。安装该版本后，运行 `python benchmark/evaluate_famous_models.py` 即可复现此表，无需下载模型权重。FLOPs 通常可近似为 MACs 的两倍。
 
 | 模型                                                                   | 尺寸<br><sup>(像素)</sup> | 参数<br><sup>(百万)</sup> | MACs<br><sup>(十亿)</sup> |
 | ---------------------------------------------------------------------- | ------------------------- | ------------------------- | ------------------------- |

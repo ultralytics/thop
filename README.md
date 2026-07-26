@@ -94,7 +94,7 @@ print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}
 
 ## 📊 Results of Recent Models
 
-The following detection models were profiled at 640 × 640 from their fused architecture definitions. Install `ultralytics`, then run `python benchmark/evaluate_famous_models.py` to reproduce the table without downloading model weights. FLOPs are often approximated as twice the MAC count.
+The following detection models were profiled at 640 × 640 from their fused architecture definitions using `ultralytics==8.4.106`. Install that version, then run `python benchmark/evaluate_famous_models.py` to reproduce the table without downloading model weights. FLOPs are often approximated as twice the MAC count.
 
 | Model                                                                  | size<br><sup>(pixels)</sup> | params<br><sup>(M)</sup> | MACs<br><sup>(B)</sup> |
 | ---------------------------------------------------------------------- | --------------------------- | ------------------------ | ---------------------- |

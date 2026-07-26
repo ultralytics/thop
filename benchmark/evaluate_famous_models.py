@@ -1,9 +1,13 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import torch
-from ultralytics import YOLO
+from ultralytics import YOLO, __version__
 
 from thop import profile
+
+ULTRALYTICS_VERSION = "8.4.106"
+if __version__ != ULTRALYTICS_VERSION:
+    raise RuntimeError(f"Install ultralytics=={ULTRALYTICS_VERSION} to reproduce these benchmarks.")
 
 model_names = [f"{family}{size}" for family in ("yolov8", "yolo11", "yolo26") for size in "nsmlx"]
 
