@@ -240,11 +240,12 @@ def profile(
 
     # reset model to original status
     model.train(prev_training_status)
-    for m, (op_handler, params_handler) in handler_collection.items():
+    for op_handler, params_handler in handler_collection.values():
         op_handler.remove()
         params_handler.remove()
-        m._buffers.pop("total_ops")
-        m._buffers.pop("total_params")
+    for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary buffers
+        m._buffers.pop("total_ops", None)
+        m._buffers.pop("total_params", None)
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict
