@@ -222,12 +222,14 @@ def profile(
 
     def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
         """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
-        total_ops, total_params = module.total_ops, module.total_params
+        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the documented
+        # `m.total_ops += torch.DoubleTensor([macs])` recipe does, and callers are owed plain Python numbers
+        total_ops, total_params = float(module.total_ops), float(module.total_params)
         ret_dict = {}
         for n, m in module.named_children():
             next_dict = {}
             if m in handler_collection and not isinstance(m, (nn.Sequential, nn.ModuleList)):
-                m_ops, m_params = m.total_ops, m.total_params
+                m_ops, m_params = float(m.total_ops), float(m.total_params)
             else:
                 m_ops, m_params, next_dict = dfs_count(m, prefix=prefix + "\t")
             ret_dict[n] = (m_ops, m_params, next_dict)
