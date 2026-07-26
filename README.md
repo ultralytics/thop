@@ -1,8 +1,10 @@
 <a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 # 🚀 THOP: PyTorch-OpCounter
 
-Welcome to the [THOP](https://github.com/ultralytics/thop) repository, your comprehensive solution for profiling [PyTorch](https://pytorch.org/) models by computing the number of Multiply-Accumulate Operations (MACs) and parameters. Maintained by Ultralytics, this tool is essential for [deep learning](https://www.ultralytics.com/glossary/deep-learning-dl) practitioners aiming to evaluate model efficiency and performance, crucial aspects discussed in our [model training tips guide](https://docs.ultralytics.com/guides/model-training-tips/).
+[THOP](https://github.com/ultralytics/thop) profiles [PyTorch](https://pytorch.org/) models by counting Multiply-Accumulate Operations (MACs) and parameters. It is lightweight, easy to extend, and maintained by [Ultralytics](https://www.ultralytics.com/).
 
 [![Ultralytics Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
@@ -11,11 +13,9 @@ Welcome to the [THOP](https://github.com/ultralytics/thop) repository, your comp
 
 ## 📄 Description
 
-THOP offers an intuitive API designed to profile PyTorch models by calculating the total number of MACs and parameters. This functionality is vital for assessing the computational efficiency and memory footprint of deep learning models, helping developers optimize performance for deployment, especially on [edge devices](https://www.ultralytics.com/glossary/edge-ai). Understanding these metrics is key to selecting the right model architecture, a topic explored in our [model comparison pages](https://docs.ultralytics.com/compare/).
+THOP measures a model with one forward pass, making it useful for comparing architecture complexity before training or deployment. It includes counting rules for common convolutional, normalization, pooling, activation, linear, and recurrent layers, with support for custom rules.
 
 ## 📦 Installation
-
-Get started with THOP quickly by installing it via pip:
 
 [![PyPI - Version](https://img.shields.io/pypi/v/ultralytics-thop?logo=pypi&logoColor=white)](https://pypi.org/project/ultralytics-thop/) [![Downloads](https://static.pepy.tech/badge/ultralytics-thop)](https://clickpy.clickhouse.com/dashboard/ultralytics-thop) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ultralytics-thop?logo=python&logoColor=gold)](https://pypi.org/project/ultralytics-thop/)
 
@@ -23,34 +23,27 @@ Get started with THOP quickly by installing it via pip:
 pip install ultralytics-thop
 ```
 
-Alternatively, for the latest features and updates, install directly from the GitHub repository:
+To install the latest development version:
 
 ```bash
 pip install --upgrade git+https://github.com/ultralytics/thop.git
 ```
 
-This ensures you have the most recent version, incorporating the latest improvements and bug fixes.
-
 ## 🛠️ How to Use
 
 ### Basic Usage
 
-Profiling a standard PyTorch model like [ResNet50](https://docs.pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html) is straightforward. Import the necessary libraries, load your model and a sample input tensor, then use the `profile` function:
+Pass the model and a tuple of example inputs to `profile()`:
 
 ```python
 import torch
-from torchvision.models import resnet50  # Example model
+from torchvision.models import resnet50
 
-from thop import profile  # Import the profile function from THOP
+from thop import profile
 
-# Load a pre-trained model (e.g., ResNet50)
 model = resnet50()
-
-# Create a dummy input tensor matching the model's expected input shape
-dummy_input = torch.randn(1, 3, 224, 224)
-
-# Profile the model
-macs, params = profile(model, inputs=(dummy_input,))
+inputs = (torch.randn(1, 3, 224, 224),)
+macs, params = profile(model, inputs=inputs)
 
 print(f"MACs: {macs}, Parameters: {params}")
 # Expected output: MACs: 4133742592.0, Parameters: 25557032.0
@@ -58,7 +51,7 @@ print(f"MACs: {macs}, Parameters: {params}")
 
 ### Define Custom Rules for Third-Party Modules
 
-If your model includes custom or third-party modules not natively supported by THOP, you can define custom profiling rules using the `custom_ops` argument. This allows for accurate profiling even with complex or non-standard architectures, which is useful when working with models like those found in the [Ultralytics models section](https://docs.ultralytics.com/models/).
+Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`.
 
 ```python
 import torch
@@ -67,57 +60,22 @@ from torch import nn
 from thop import profile
 
 
-# Define your custom module
-class YourCustomModule(nn.Module):
-    def __init__(self):
-        """Initialize the example convolution layer."""
-        super().__init__()
-        # Define layers, e.g., a convolution
-        self.conv = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
-
-    def forward(self, x):
-        """Apply the example convolution layer."""
-        return self.conv(x)
+def count_silu(module, inputs, output):
+    """Count one operation per output element as a simple example."""
+    module.total_ops += output.numel()
 
 
-# Define a custom counting function for your module
-# This function should calculate and return the MACs for the module's operations
-def count_your_custom_module(module, x, y):
-    # Example: Calculate MACs for the conv layer
-    # Note: This is a simplified example. Real calculations depend on the module's specifics.
-    # MACs = output_height * output_width * kernel_height * kernel_width * in_channels * out_channels
-    # For simplicity, we'll just assign a placeholder value or use a helper if available
-    # In a real scenario, you'd implement the precise MAC calculation here.
-    # For nn.Conv2d, THOP usually handles it, but this demonstrates the concept.
-    macs = 0  # Placeholder: Implement actual MAC calculation based on module logic
-    # You might need access to module properties like kernel_size, stride, padding, channels etc.
-    # Example for a Conv2d layer (simplified):
-    if isinstance(module, nn.Conv2d):
-        _, _, H, W = y.shape  # Output shape
-        k_h, k_w = module.kernel_size
-        in_c = module.in_channels
-        out_c = module.out_channels
-        groups = module.groups
-        macs = (k_h * k_w * in_c * out_c * H * W) / groups
-    module.total_ops += torch.DoubleTensor([macs])  # Accumulate MACs
-
-
-# Instantiate a model containing your custom module
-model = YourCustomModule()  # Or a larger model incorporating this module
-
-# Create a dummy input
-dummy_input = torch.randn(1, 3, 224, 224)
-
-# Profile the model, providing the custom operation mapping
-macs, params = profile(model, inputs=(dummy_input,), custom_ops={YourCustomModule: count_your_custom_module})
+model = nn.Sequential(nn.Conv2d(3, 64, 3, padding=1), nn.SiLU())
+inputs = (torch.randn(1, 3, 224, 224),)
+macs, params = profile(model, inputs=inputs, custom_ops={nn.SiLU: count_silu})
 
 print(f"Custom MACs: {macs}, Parameters: {params}")
-# Expected output: Custom MACs: 86704128.0, Parameters: 1792.0
+# Expected output: Custom MACs: 89915392.0, Parameters: 1792.0
 ```
 
 ### Improve Output Readability
 
-For clearer and more interpretable results, use the `thop.clever_format` function. This formats the raw MACs and parameter counts into human-readable strings (e.g., GigaMACs, MegaParams). This formatting helps in quickly understanding the scale of computational resources required, similar to the metrics provided in our [Ultralytics YOLOv8 documentation](https://docs.ultralytics.com/models/yolov8/).
+Use `clever_format()` to convert raw counts into human-readable values:
 
 ```python
 import torch
@@ -126,10 +84,8 @@ from torchvision.models import resnet50
 from thop import clever_format, profile
 
 model = resnet50()
-dummy_input = torch.randn(1, 3, 224, 224)
-macs, params = profile(model, inputs=(dummy_input,))
-
-# Format the numbers into a readable format (e.g., 4.13 GMac, 25.56 MParams)
+inputs = (torch.randn(1, 3, 224, 224),)
+macs, params = profile(model, inputs=inputs)
 macs_readable, params_readable = clever_format([macs, params], "%.3f")
 
 print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}")
@@ -138,70 +94,46 @@ print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}
 
 ## 📊 Results of Recent Models
 
-The table below showcases the parameters and MACs for several popular [computer vision](https://www.ultralytics.com/glossary/computer-vision-cv) models, profiled using THOP. These benchmarks provide a comparative overview of model complexity and computational cost. You can reproduce these results by running the script located at `benchmark/evaluate_famous_models.py` in this repository. Comparing these metrics is essential for tasks like selecting models for [object detection](https://www.ultralytics.com/glossary/object-detection) or [image classification](https://www.ultralytics.com/glossary/image-classification). For more comparisons, see our [model comparison section](https://docs.ultralytics.com/compare/).
+The following detection models were profiled at 640 × 640 from their fused architecture definitions using `ultralytics==8.4.106`. Install that version, then run `python benchmark/evaluate_famous_models.py` to reproduce the table without downloading model weights. FLOPs are often approximated as twice the MAC count.
 
-<table align="center">
-<tr>
-<td>
+| Model                                                                  | size<br><sup>(pixels)</sup> | params<br><sup>(M)</sup> | MACs<br><sup>(B)</sup> |
+| ---------------------------------------------------------------------- | --------------------------- | ------------------------ | ---------------------- |
+| [YOLOv8n](https://platform.ultralytics.com/ultralytics/yolov8/yolov8n) | 640                         | 3.15                     | 4.37                   |
+| [YOLOv8s](https://platform.ultralytics.com/ultralytics/yolov8/yolov8s) | 640                         | 11.16                    | 14.30                  |
+| [YOLOv8m](https://platform.ultralytics.com/ultralytics/yolov8/yolov8m) | 640                         | 25.89                    | 39.47                  |
+| [YOLOv8l](https://platform.ultralytics.com/ultralytics/yolov8/yolov8l) | 640                         | 43.67                    | 82.58                  |
+| [YOLOv8x](https://platform.ultralytics.com/ultralytics/yolov8/yolov8x) | 640                         | 68.20                    | 128.91                 |
+| [YOLO11n](https://platform.ultralytics.com/ultralytics/yolo11/yolo11n) | 640                         | 2.62                     | 3.24                   |
+| [YOLO11s](https://platform.ultralytics.com/ultralytics/yolo11/yolo11s) | 640                         | 9.44                     | 10.74                  |
+| [YOLO11m](https://platform.ultralytics.com/ultralytics/yolo11/yolo11m) | 640                         | 20.09                    | 33.99                  |
+| [YOLO11l](https://platform.ultralytics.com/ultralytics/yolo11/yolo11l) | 640                         | 25.34                    | 43.46                  |
+| [YOLO11x](https://platform.ultralytics.com/ultralytics/yolo11/yolo11x) | 640                         | 56.92                    | 97.46                  |
+| [YOLO26n](https://platform.ultralytics.com/ultralytics/yolo26/yolo26n) | 640                         | 2.41                     | 2.68                   |
+| [YOLO26s](https://platform.ultralytics.com/ultralytics/yolo26/yolo26s) | 640                         | 9.50                     | 10.35                  |
+| [YOLO26m](https://platform.ultralytics.com/ultralytics/yolo26/yolo26m) | 640                         | 20.41                    | 34.09                  |
+| [YOLO26l](https://platform.ultralytics.com/ultralytics/yolo26/yolo26l) | 640                         | 24.81                    | 43.22                  |
+| [YOLO26x](https://platform.ultralytics.com/ultralytics/yolo26/yolo26x) | 640                         | 55.73                    | 96.94                  |
 
-| Model            | Params(M) | MACs(G) |
-| ---------------- | --------- | ------- |
-| alexnet          | 61.10     | 0.71    |
-| vgg11            | 132.86    | 7.61    |
-| vgg11_bn         | 132.87    | 7.64    |
-| vgg13            | 133.05    | 11.31   |
-| vgg13_bn         | 133.05    | 11.36   |
-| vgg16            | 138.36    | 15.47   |
-| vgg16_bn         | 138.37    | 15.52   |
-| vgg19            | 143.67    | 19.63   |
-| vgg19_bn         | 143.68    | 19.69   |
-| resnet18         | 11.69     | 1.82    |
-| resnet34         | 21.80     | 3.68    |
-| resnet50         | 25.56     | 4.13    |
-| resnet101        | 44.55     | 7.87    |
-| resnet152        | 60.19     | 11.60   |
-| wide_resnet101_2 | 126.89    | 22.84   |
-| wide_resnet50_2  | 68.88     | 11.46   |
+## 🤝 Contribute
 
-</td>
-<td>
+We thrive on community collaboration! THOP wouldn't be the tool it is without contributions from developers like you. Please see our [Contributing Guide](https://docs.ultralytics.com/help/contributing) to get started. We also welcome your feedback—share your experience by completing our [Survey](https://www.ultralytics.com/survey?utm_source=github&utm_medium=social&utm_campaign=Survey). A huge **Thank You** 🙏 to everyone who contributes!
 
-| Model              | Params(M) | MACs(G) |
-| ------------------ | --------- | ------- |
-| resnext50_32x4d    | 25.03     | 4.29    |
-| resnext101_32x8d   | 88.79     | 16.54   |
-| densenet121        | 7.98      | 2.90    |
-| densenet161        | 28.68     | 7.85    |
-| densenet169        | 14.15     | 3.44    |
-| densenet201        | 20.01     | 4.39    |
-| squeezenet1_0      | 1.25      | 0.82    |
-| squeezenet1_1      | 1.24      | 0.35    |
-| mnasnet0_5         | 2.22      | 0.12    |
-| mnasnet0_75        | 3.17      | 0.23    |
-| mnasnet1_0         | 4.38      | 0.34    |
-| mnasnet1_3         | 6.28      | 0.56    |
-| mobilenet_v2       | 3.50      | 0.33    |
-| shufflenet_v2_x0_5 | 1.37      | 0.04    |
-| shufflenet_v2_x1_0 | 2.28      | 0.15    |
-| shufflenet_v2_x1_5 | 3.50      | 0.31    |
-| shufflenet_v2_x2_0 | 7.39      | 0.60    |
-| inception_v3       | 23.83     | 5.75    |
+<!-- SVG image from https://opencollective.com/ultralytics/contributors.svg?width=1280 -->
 
-</td>
-</tr>
-</table>
+[![Ultralytics open-source contributors](https://raw.githubusercontent.com/ultralytics/assets/main/im/image-contributors.png)](https://github.com/ultralytics/thop/graphs/contributors)
 
-## 🙌 Contribute
-
-We actively welcome and encourage community contributions to make THOP even better! Whether it's adding support for new [PyTorch layers](https://docs.pytorch.org/docs/stable/nn.html), improving existing calculations, enhancing documentation, or fixing bugs, your input is valuable. Please see our [Contributing Guide](https://docs.ultralytics.com/help/contributing/) for detailed instructions on how to participate. Together, we can ensure THOP remains a state-of-the-art tool for the [machine learning](https://www.ultralytics.com/glossary/machine-learning-ml) community. Don't hesitate to share your feedback and suggestions!
+We look forward to your contributions to help make the Ultralytics ecosystem even better!
 
 ## 📜 License
 
-THOP is distributed under the [AGPL-3.0 License](https://opensource.org/license/agpl-3.0). This license promotes open collaboration and sharing of improvements. For complete details, please refer to the [LICENSE](https://github.com/ultralytics/thop/blob/main/LICENSE) file included in the repository. Understanding the license is important before integrating THOP into your projects, especially for commercial applications which may require an [Enterprise License](https://www.ultralytics.com/license).
+Ultralytics offers two licensing options to suit different needs:
 
-## 📧 Contact
+- **AGPL-3.0 License**: This [OSI-approved](https://opensource.org/license/agpl-3.0) open-source license is perfect for students, researchers, and enthusiasts. It encourages open collaboration and knowledge sharing. See the [LICENSE](https://github.com/ultralytics/thop/blob/main/LICENSE) file for full details.
+- **Ultralytics Enterprise License**: For development and production use, this license enables seamless integration of Ultralytics software and AI models into business products and services, including internal tools, automated workflows, and production deployments, bypassing the open-source requirements of AGPL-3.0. To get started, please contact us via [Ultralytics Licensing](https://www.ultralytics.com/license).
 
-Encountered a bug or have a feature request? Please submit an issue through our [GitHub Issues](https://github.com/ultralytics/thop/issues) page. For general discussions, questions, and community support, join the vibrant Ultralytics community on our [Discord server](https://discord.com/invite/ultralytics). We look forward to hearing from you and collaborating!
+## 📞 Contact
+
+For bug reports and feature requests related to THOP, please visit [GitHub Issues](https://github.com/ultralytics/thop/issues). For questions, discussions, and community support, join our active communities on [Discord](https://discord.com/invite/ultralytics), [Reddit](https://www.reddit.com/r/ultralytics/), and the [Ultralytics Community Forums](https://community.ultralytics.com/). We're here to help with all things Ultralytics!
 
 <br>
 <div align="center">

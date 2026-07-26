@@ -1,30 +1,22 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import torch
-from torchvision import models
+from ultralytics import YOLO, __version__
 
-from thop.profile import profile
+from thop import profile
 
-model_names = sorted(
-    name
-    for name in models.__dict__
-    if name.islower()
-    and not name.startswith("__")  # and "inception" in name
-    and callable(models.__dict__[name])
-)
+ULTRALYTICS_VERSION = "8.4.106"
+if __version__ != ULTRALYTICS_VERSION:
+    raise RuntimeError(f"Install ultralytics=={ULTRALYTICS_VERSION} to reproduce these benchmarks.")
 
-print("Model | Params(M) | FLOPs(G)")
+model_names = [f"{family}{size}" for family in ("yolov8", "yolo11", "yolo26") for size in "nsmlx"]
+
+print("Model | Params(M) | MACs(G)")
 print("---|---|---")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 for name in model_names:
-    try:
-        model = models.__dict__[name]().to(device)
-        dsize = (1, 3, 224, 224)
-        if "inception" in name:
-            dsize = (1, 3, 299, 299)
-        inputs = torch.randn(dsize).to(device)
-        total_ops, total_params = profile(model, (inputs,), verbose=False)
-        print(f"{name} | {total_params / (1000**2):.2f} | {total_ops / (1000**3):.2f}")
-    except Exception as e:
-        print(f"Warning: failed to process {e}")
+    model = YOLO(f"{name}.yaml").model.fuse(verbose=False).to(device)
+    inputs = torch.zeros(1, 3, 640, 640, device=device)
+    total_ops, total_params = profile(model, (inputs,), verbose=False)
+    print(f"{name} | {total_params / 1e6:.2f} | {total_ops / 1e9:.2f}")
