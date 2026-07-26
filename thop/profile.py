@@ -211,6 +211,8 @@ def profile(
             )
         types_collection.add(m_type)
 
+    counted = set()
+
     def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
         """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
         total_ops, total_params = module.total_ops.item(), module.total_params.item()
@@ -226,6 +228,9 @@ def profile(
             else:
                 m_ops, m_params, next_dict = dfs_count(m, prefix=prefix + "\t")
             ret_dict[n] = (m_ops, m_params, next_dict)
+            if m in counted:  # a module reached through several parents already accumulated all of its calls
+                continue
+            counted.add(m)
             total_ops += m_ops
             total_params += m_params
         # print(prefix, module._get_name(), (total_ops, total_params))
@@ -233,14 +238,13 @@ def profile(
 
     prev_training_status = model.training
 
-    model.eval()
-    model.apply(add_hooks)
-
     try:
+        model.eval()
+        model.apply(add_hooks)
         with torch.no_grad():
             model(*inputs)
         total_ops, total_params, ret_dict = dfs_count(model)
-    finally:  # a failed forward pass must not leave hooks or buffers behind
+    finally:  # no failure, at any stage, may leave hooks or buffers behind
         # reset model to original status
         model.train(prev_training_status)
         for op_handler, params_handler in handler_collection.values():
