@@ -163,5 +163,8 @@ def count_multihead_attention(m: nn.MultiheadAttention, x, y):
     # Scores against the keys and the weighted sum of the values are tgt_len x src_len x embed_dim each once the
     # heads are summed, so num_heads does not appear: every head contributes embed_dim // num_heads of it
     projections = embed_dim * (2 * tgt_len * embed_dim + src_len * (m.kdim + m.vdim))
-    attention = 2 * tgt_len * src_len * embed_dim
+    # add_bias_kv appends a learned key and value position and add_zero_attn a zero one, both after the projections,
+    # so each lengthens the two matrix products by one source position without adding any projection work
+    attended = src_len + (m.bias_k is not None) + m.add_zero_attn
+    attention = 2 * tgt_len * attended * embed_dim
     m.total_ops += batch_size * (projections + attention)
