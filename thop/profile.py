@@ -15,6 +15,7 @@ from thop.vision.basic_hooks import (
     count_convNd,
     count_convtNd,
     count_linear,
+    count_multihead_attention,
     count_normalization,
     count_prelu,
     count_relu,
@@ -45,6 +46,7 @@ register_hooks = {
     nn.InstanceNorm1d: count_normalization,
     nn.InstanceNorm2d: count_normalization,
     nn.InstanceNorm3d: count_normalization,
+    nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
     nn.Softmax: count_softmax,
     nn.ReLU: zero_ops,
@@ -63,6 +65,7 @@ register_hooks = {
     nn.AdaptiveAvgPool2d: count_adap_avgpool,
     nn.AdaptiveAvgPool3d: count_adap_avgpool,
     nn.Linear: count_linear,
+    nn.MultiheadAttention: count_multihead_attention,
     nn.Dropout: zero_ops,
     nn.Upsample: count_upsample,
     nn.UpsamplingBilinear2d: count_upsample,
@@ -77,6 +80,9 @@ register_hooks = {
     nn.PixelShuffle: zero_ops,
     nn.SyncBatchNorm: count_normalization,
 }
+
+if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one count_normalization already reads
+    register_hooks[nn.RMSNorm] = count_normalization
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):

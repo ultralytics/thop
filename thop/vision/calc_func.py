@@ -57,25 +57,21 @@ def calculate_avgpool(input_size):
     return int(input_size)
 
 
-def calculate_adaptive_avg(kernel_size, output_size):
-    """Calculate FLOPs for adaptive average pooling given kernel size and output size."""
-    total_div = 1
-    kernel_op = kernel_size + total_div
-    return int(kernel_op * output_size)
+# the interpolation cost of one output element, per upsampling mode. The nearest-neighbour modes gather an input
+# element and do no arithmetic at all, so they cost nothing, as nn.MaxPool2d and nn.ZeroPad2d already do here
+UPSAMPLE_OPS_PER_ELEMENT = {
+    "nearest": 0,
+    "nearest-exact": 0,
+    "linear": 5,
+    "bilinear": 11,
+    "bicubic": 224 + 35,
+    "trilinear": 13 * 2 + 5,
+}
 
 
 def calculate_upsample(mode: str, output_size):
     """Calculate the operations required for various upsample methods based on mode and output size."""
-    total_ops = output_size
-    if mode == "bicubic":
-        total_ops *= 224 + 35
-    elif mode == "bilinear":
-        total_ops *= 11
-    elif mode == "linear":
-        total_ops *= 5
-    elif mode == "trilinear":
-        total_ops *= 13 * 2 + 5
-    return int(total_ops)
+    return int(output_size * UPSAMPLE_OPS_PER_ELEMENT.get(mode, 0))
 
 
 def calculate_linear(in_feature, num_elements):

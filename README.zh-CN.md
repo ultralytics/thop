@@ -101,18 +101,18 @@ print(f"Formatted MACs: {macs_readable}, Formatted Parameters: {params_readable}
 | [YOLOv8n](https://platform.ultralytics.com/ultralytics/yolov8/yolov8n) | 640                       | 3.15                      | 4.37                      |
 | [YOLOv8s](https://platform.ultralytics.com/ultralytics/yolov8/yolov8s) | 640                       | 11.16                     | 14.30                     |
 | [YOLOv8m](https://platform.ultralytics.com/ultralytics/yolov8/yolov8m) | 640                       | 25.89                     | 39.47                     |
-| [YOLOv8l](https://platform.ultralytics.com/ultralytics/yolov8/yolov8l) | 640                       | 43.67                     | 82.58                     |
-| [YOLOv8x](https://platform.ultralytics.com/ultralytics/yolov8/yolov8x) | 640                       | 68.20                     | 128.91                    |
+| [YOLOv8l](https://platform.ultralytics.com/ultralytics/yolov8/yolov8l) | 640                       | 43.67                     | 82.57                     |
+| [YOLOv8x](https://platform.ultralytics.com/ultralytics/yolov8/yolov8x) | 640                       | 68.20                     | 128.90                    |
 | [YOLO11n](https://platform.ultralytics.com/ultralytics/yolo11/yolo11n) | 640                       | 2.62                      | 3.24                      |
-| [YOLO11s](https://platform.ultralytics.com/ultralytics/yolo11/yolo11s) | 640                       | 9.44                      | 10.74                     |
+| [YOLO11s](https://platform.ultralytics.com/ultralytics/yolo11/yolo11s) | 640                       | 9.44                      | 10.73                     |
 | [YOLO11m](https://platform.ultralytics.com/ultralytics/yolo11/yolo11m) | 640                       | 20.09                     | 33.99                     |
 | [YOLO11l](https://platform.ultralytics.com/ultralytics/yolo11/yolo11l) | 640                       | 25.34                     | 43.46                     |
-| [YOLO11x](https://platform.ultralytics.com/ultralytics/yolo11/yolo11x) | 640                       | 56.92                     | 97.46                     |
+| [YOLO11x](https://platform.ultralytics.com/ultralytics/yolo11/yolo11x) | 640                       | 56.92                     | 97.45                     |
 | [YOLO26n](https://platform.ultralytics.com/ultralytics/yolo26/yolo26n) | 640                       | 2.41                      | 2.68                      |
-| [YOLO26s](https://platform.ultralytics.com/ultralytics/yolo26/yolo26s) | 640                       | 9.50                      | 10.35                     |
+| [YOLO26s](https://platform.ultralytics.com/ultralytics/yolo26/yolo26s) | 640                       | 9.50                      | 10.34                     |
 | [YOLO26m](https://platform.ultralytics.com/ultralytics/yolo26/yolo26m) | 640                       | 20.41                     | 34.09                     |
-| [YOLO26l](https://platform.ultralytics.com/ultralytics/yolo26/yolo26l) | 640                       | 24.81                     | 43.22                     |
-| [YOLO26x](https://platform.ultralytics.com/ultralytics/yolo26/yolo26x) | 640                       | 55.73                     | 96.94                     |
+| [YOLO26l](https://platform.ultralytics.com/ultralytics/yolo26/yolo26l) | 640                       | 24.81                     | 43.21                     |
+| [YOLO26x](https://platform.ultralytics.com/ultralytics/yolo26/yolo26x) | 640                       | 55.73                     | 96.93                     |
 
 ## 🤝 贡献
 

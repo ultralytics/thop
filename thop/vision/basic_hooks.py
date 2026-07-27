@@ -7,7 +7,7 @@ from torch import nn
 from torch.nn.modules.conv import _ConvNd
 
 from thop.vision.calc_func import (
-    calculate_adaptive_avg,
+    UPSAMPLE_OPS_PER_ELEMENT,
     calculate_avgpool,
     calculate_conv2d_flops,
     calculate_linear,
@@ -117,27 +117,24 @@ def count_avgpool(m, x, y):
 
 
 def count_adap_avgpool(m, x, y):
-    """Calculate and update the total operation counts for an AdaptiveAvgPool layer using kernel and element counts."""
-    total_add = l_prod(i / o for i, o in zip(x[0].shape[2:], y.shape[2:]))
+    """Calculate and update the total operation counts for an AdaptiveAvgPool layer from the windows it pools."""
+    # the windows nn.AdaptiveAvgPool* actually slices, per dimension: output j spans
+    # [j * I // O, ceil((j + 1) * I / O)), so their sizes are integral and unequal whenever O does not divide I.
+    # The input-over-output ratio this replaced was a float, which made total_ops fractional, and it was also
+    # smaller than the window it stood for
+    windows = l_prod(
+        sum(-(-(j + 1) * i // o) - j * i // o for j in range(o)) for i, o in zip(x[0].shape[2:], y.shape[2:])
+    )
     num_elements = y.numel()
-    m.total_ops += calculate_adaptive_avg(total_add, num_elements)
+    m.total_ops += windows * (num_elements // l_prod(y.shape[2:])) + num_elements  # one add per input, one divide out
 
 
 # TODO: verify the accuracy
 def count_upsample(m, x, y):
     """Update total operations counter for upsampling layers based on the mode used."""
-    if m.mode not in (
-        "nearest",
-        "linear",
-        "bilinear",
-        "bicubic",
-        "trilinear",
-    ):
+    if m.mode not in UPSAMPLE_OPS_PER_ELEMENT:
         logging.getLogger(__name__).warning(f"mode {m.mode} is not implemented yet, take it a zero op")
-        m.total_ops += 0
-    else:
-        x = x[0]
-        m.total_ops += calculate_upsample(m.mode, y.nelement())
+    m.total_ops += calculate_upsample(m.mode, y.nelement())
 
 
 # nn.Linear
@@ -149,3 +146,22 @@ def count_linear(m, x, y):
     num_elements = y.numel()
 
     m.total_ops += calculate_linear(total_mul, num_elements)
+
+
+def count_multihead_attention(m: nn.MultiheadAttention, x, y):
+    """Counts the four projections and the two attention matrix products of an nn.MultiheadAttention layer."""
+    # the target length comes from the attention output, which carries the query's shape, and the source length from
+    # the key: value is free to arrive as a keyword, which a forward hook never sees, and it is required to have the
+    # key's sequence length anyway. Unbatched input drops the batch dimension, and batch_first swaps the other two
+    out, key = y[0], x[1]
+    embed_dim = out.shape[-1]
+    tgt_len = out.shape[-2] if m.batch_first or out.dim() == 2 else out.shape[0]
+    src_len = key.shape[-2] if m.batch_first or key.dim() == 2 else key.shape[0]
+    batch_size = out.numel() // (tgt_len * embed_dim)
+
+    # the query and output projections are embed_dim wide, the key and value ones are as wide as what they read.
+    # Scores against the keys and the weighted sum of the values are tgt_len x src_len x embed_dim each once the
+    # heads are summed, so num_heads does not appear: every head contributes embed_dim // num_heads of it
+    projections = embed_dim * (2 * tgt_len * embed_dim + src_len * (m.kdim + m.vdim))
+    attention = 2 * tgt_len * src_len * embed_dim
+    m.total_ops += batch_size * (projections + attention)
