@@ -98,7 +98,9 @@ def count_softmax(m, x, y):
     # nn.Softmax(dim=None) is deprecated but still legal and still runs, resolving the dimension itself, so the
     # count follows the same rule rather than raising: dimension 0 for 0-, 1- and 3-dimensional input, 1 otherwise
     dim = m.dim if m.dim is not None else 0 if x.dim() in {0, 1, 3} else 1
-    nfeatures = x.size()[dim]
+    # a scalar normalizes over itself, which no shape entry can say: torch returns 1.0 for it, so the cost is
+    # the one exponential and the one division that produce that, and indexing the empty shape only raises
+    nfeatures = x.size()[dim] if x.dim() else 1
     batch_size = x.numel() // nfeatures
 
     m.total_ops += calculate_softmax(batch_size, nfeatures)
