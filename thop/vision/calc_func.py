@@ -1,5 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+from torch.nn.parameter import is_lazy
+
 
 def l_prod(in_list):
     """Compute the product of all elements in the input list."""
@@ -11,7 +13,9 @@ def l_prod(in_list):
 
 def calculate_parameters(param_list):
     """Calculate the total number of parameters in a list of tensors using the product of their shapes."""
-    return sum(p.nelement() for p in param_list)
+    # a lazy module's parameters hold no elements until its first forward pass, and asking one for its
+    # element count raises rather than answering 0, so they are skipped instead of being counted
+    return sum(p.nelement() for p in param_list if not is_lazy(p))
 
 
 def calculate_zero_ops():

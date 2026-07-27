@@ -92,17 +92,12 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         if list(m.children()):
             return
 
-        if hasattr(m, "total_ops") or hasattr(m, "total_params"):
+        if hasattr(m, "total_ops"):
             logging.warning(
-                f"Either .total_ops or .total_params is already defined in {m!s}. "
-                "Be careful, it might change your code's behavior."
+                f".total_ops is already defined in {m!s}. Be careful, it might change your code's behavior."
             )
 
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
-        m.register_buffer("total_params", torch.zeros(1, dtype=default_dtype))
-
-        for p in m.parameters():
-            m.total_params += torch.DoubleTensor([p.numel()])
 
         m_type = type(m)
 
@@ -133,15 +128,13 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         model(*inputs)
 
     total_ops = 0
-    total_params = 0
     for m in model.modules():
         if list(m.children()):  # skip for non-leaf module
             continue
         total_ops += m.total_ops
-        total_params += m.total_params
 
     total_ops = total_ops.item()
-    total_params = total_params.item()
+    total_params = float(calculate_parameters(model.parameters()))
 
     # reset model to original status
     model.train(training)
@@ -154,8 +147,6 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             continue
         if "total_ops" in m._buffers:
             m._buffers.pop("total_ops")
-        if "total_params" in m._buffers:
-            m._buffers.pop("total_params")
 
     return total_ops, total_params
 
@@ -178,15 +169,14 @@ def profile(
         verbose = True
 
     def add_hooks(m: nn.Module):
-        """Registers hooks to a neural network module to track total operations and parameters."""
+        """Registers a hook on a neural network module to track its total operations."""
         if m in handler_collection:  # model.apply() revisits modules shared by several parents, e.g. a common act
             return
 
-        # plain int attributes, not float64 buffers: buffer reads go through nn.Module.__getattr__ and every
+        # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
         m.__dict__["total_ops"] = 0
-        m.__dict__["total_params"] = 0
 
         m_type = type(m)
 
@@ -205,41 +195,33 @@ def profile(
                 prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
 
         if fn is not None:
-            # One hook, not two: every registered hook forces nn.Module.__call__ down its slow path, so the op
-            # rule and the parameter tally share a single callback. Parameters cannot change during a forward
-            # pass, so the count is taken once here rather than recomputed on each call.
-            nparams = calculate_parameters(m.parameters(recurse=False))
-
-            def counter(m, x, y, fn=fn, nparams=nparams):
-                """Applies the module's op-counting rule and records its parameter count."""
-                fn(m, x, y)
-                m.__dict__["total_params"] = nparams
-
-            handler_collection[m] = m.register_forward_hook(counter)
+            # every registered hook forces nn.Module.__call__ down its slow path, so the rule is registered
+            # directly rather than through a wrapper: it is the only work a forward pass has to do here
+            handler_collection[m] = m.register_forward_hook(fn)
         types_collection.add(m_type)
 
     counted = set()
 
-    def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
-        """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
+    def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
+        """Recursively counts the total operations of the given PyTorch module and its submodules."""
         # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the documented
         # `m.total_ops += torch.DoubleTensor([macs])` recipe does, and callers are owed plain Python numbers
-        total_ops, total_params = float(module.total_ops), float(module.total_params)
+        total_ops = float(module.total_ops)
         ret_dict = {}
         for n, m in module.named_children():
             next_dict = {}
             if m in handler_collection and not isinstance(m, (nn.Sequential, nn.ModuleList)):
-                m_ops, m_params = float(m.total_ops), float(m.total_params)
+                m_ops = float(m.total_ops)
             else:
-                m_ops, m_params, next_dict = dfs_count(m, prefix=prefix + "\t")
-            ret_dict[n] = (m_ops, m_params, next_dict)
+                m_ops, next_dict = dfs_count(m, prefix=prefix + "\t")
+            if ret_layer_info:  # the per-layer tree is the caller's opt-in, so it is not built when discarded
+                ret_dict[n] = (m_ops, float(calculate_parameters(m.parameters())), next_dict)
             if m in counted:  # a module reached through several parents already accumulated all of its calls
                 continue
             counted.add(m)
             total_ops += m_ops
-            total_params += m_params
-        # print(prefix, module._get_name(), (total_ops, total_params))
-        return total_ops, total_params, ret_dict
+        # print(prefix, module._get_name(), total_ops)
+        return total_ops, ret_dict
 
     prev_training_status = model.training
 
@@ -248,15 +230,19 @@ def profile(
         model.apply(add_hooks)
         with torch.no_grad():
             model(*inputs)
-        total_ops, total_params, ret_dict = dfs_count(model)
-    finally:  # no failure, at any stage, may leave hooks or buffers behind
+        total_ops, ret_dict = dfs_count(model)
+        # parameters belong to the module tree, not to the traced call, so they are read off the tree: a
+        # per-module tally counts a weight shared by N modules N times, misses any module type without an
+        # op-counting rule, and misses branches the forward pass skipped. parameters() dedups by tensor
+        # identity and covers all three, and is what nn.Module reports for the same model.
+        total_params = float(calculate_parameters(model.parameters()))
+    finally:  # no failure, at any stage, may leave hooks or attributes behind
         # reset model to original status
         model.train(prev_training_status)
         for handler in handler_collection.values():
             handler.remove()
-        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attributes
+        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attribute
             m.__dict__.pop("total_ops", None)
-            m.__dict__.pop("total_params", None)
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict
