@@ -17,7 +17,6 @@ from thop.vision.basic_hooks import (
     count_linear,
     count_normalization,
     count_prelu,
-    count_relu,
     count_softmax,
     count_upsample,
     logging,
@@ -47,7 +46,7 @@ register_hooks = {
     nn.Softmax: count_softmax,
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
-    nn.LeakyReLU: count_relu,
+    nn.LeakyReLU: zero_ops,
     nn.MaxPool1d: zero_ops,
     nn.MaxPool2d: zero_ops,
     nn.MaxPool3d: zero_ops,
@@ -100,6 +99,22 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
+def _restore_modes(model, prev_training):
+    """Put every module back into the training mode it was in before profiling.
+
+    model.train() alone cannot do it: it recurses, so a tree holding more than one mode collapses into the root's. It
+    runs first all the same, because a module that overrides train() — SAM's TinyViT attention drops a tensor it caches
+    for eval — restores state of its own that no flag assignment reaches. The second pass then repairs the modules that
+    call flattened, through train() for the same reason, and a module whose flag is already right is left alone. Modules
+    come in parent-first order, so repairing a parent's subtree cannot undo a child repaired earlier: the child is
+    visited afterwards.
+    """
+    model.train(prev_training[model])
+    for m, was_training in prev_training.items():
+        if m.training != was_training:
+            m.train(was_training)
+
+
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = []
@@ -127,34 +142,31 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             handler_collection.append(handler)
         types_collection.add(m_type)
 
-    training = model.training
+    # every module's own flag, not just the root's: model.eval() below recurses, so restoring the root alone
+    # flattens a deliberately mixed tree, e.g. the frozen BatchNorm under a training parent that fine-tuning uses
+    prev_training = {m: m.training for m in model.modules()}
 
-    model.eval()
-    model.apply(add_hooks)
+    try:
+        model.eval()
+        model.apply(add_hooks)
 
-    with torch.no_grad():
-        model(*inputs)
+        with torch.no_grad():
+            model(*inputs)
 
-    total_ops = 0
-    for m in model.modules():
-        if list(m.children()):  # skip for non-leaf module
-            continue
-        total_ops += m.total_ops
+        total_ops = 0
+        for m in model.modules():
+            if list(m.children()):  # skip for non-leaf module
+                continue
+            total_ops += m.total_ops
 
-    total_ops = total_ops.item()
-    total_params = float(calculate_parameters(model.parameters()))
-
-    # reset model to original status
-    model.train(training)
-    for handler in handler_collection:
-        handler.remove()
-
-    # remove temporal buffers
-    for n, m in model.named_modules():
-        if list(m.children()):
-            continue
-        if "total_ops" in m._buffers:
-            m._buffers.pop("total_ops")
+        total_ops = total_ops.item()
+        total_params = float(calculate_parameters(model.parameters()))
+    finally:  # no failure, at any stage, may leave behind the hooks or the buffers this call created
+        _restore_modes(model, prev_training)
+        for handler in handler_collection:
+            handler.remove()
+        for m in model.modules():  # a pop covers the non-leaf modules add_hooks never gave a buffer to
+            m._buffers.pop("total_ops", None)
 
     return total_ops, total_params
 
@@ -217,7 +229,7 @@ def profile(
         # print(prefix, module._get_name(), total_ops)
         return total_ops, ret_dict
 
-    prev_training_status = model.training
+    prev_training = {m: m.training for m in model.modules()}  # per module: model.eval() below recurses
 
     try:
         model.eval()
@@ -231,8 +243,7 @@ def profile(
         # identity and covers all three, and is what nn.Module reports for the same model.
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind the hooks or the attribute this call created
-        # reset model to original status
-        model.train(prev_training_status)
+        _restore_modes(model, prev_training)  # reset model to original status
         for handler in handler_collection.values():
             handler.remove()
         for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attribute

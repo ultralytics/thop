@@ -43,11 +43,6 @@ def calculate_norm(input_size):
     return 2 * input_size
 
 
-def calculate_relu_flops(input_size):
-    """Calculates the FLOPs for a ReLU activation function based on the input tensor's dimensions."""
-    return 0
-
-
 def calculate_softmax(batch_size, nfeatures):
     """Compute FLOPs for a softmax activation given batch size and feature count."""
     total_exp = nfeatures
