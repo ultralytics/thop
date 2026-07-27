@@ -14,7 +14,6 @@ from thop.vision.calc_func import (
     calculate_norm,
     calculate_relu_flops,
     calculate_softmax,
-    calculate_upsample,
     calculate_zero_ops,
     l_prod,
 )
@@ -132,9 +131,11 @@ def count_adap_avgpool(m, x, y):
 # TODO: verify the accuracy
 def count_upsample(m, x, y):
     """Update total operations counter for upsampling layers based on the mode used."""
-    if m.mode not in UPSAMPLE_OPS_PER_ELEMENT:
+    ops_per_element = UPSAMPLE_OPS_PER_ELEMENT.get(m.mode)
+    if ops_per_element is None:  # one lookup owns both the cost and whether the mode has one at all
         logging.getLogger(__name__).warning(f"mode {m.mode} is not implemented yet, take it a zero op")
-    m.total_ops += calculate_upsample(m.mode, y.nelement())
+        ops_per_element = 0
+    m.total_ops += ops_per_element * y.nelement()
 
 
 # nn.Linear
@@ -154,10 +155,11 @@ def count_multihead_attention(m: nn.MultiheadAttention, x, y):
     # the key: value is free to arrive as a keyword, which a forward hook never sees, and it is required to have the
     # key's sequence length anyway. Unbatched input drops the batch dimension, and batch_first swaps the other two
     out, key = y[0], x[1]
+    batch_first = getattr(m, "batch_first", False)  # added in torch 1.9; before it the layout is always (L, N, E)
     embed_dim = out.shape[-1]
-    tgt_len = out.shape[-2] if m.batch_first or out.dim() == 2 else out.shape[0]
-    src_len = key.shape[-2] if m.batch_first or key.dim() == 2 else key.shape[0]
-    batch_size = out.numel() // (tgt_len * embed_dim)
+    tgt_len = out.shape[-2] if batch_first or out.dim() == 2 else out.shape[0]
+    src_len = key.shape[-2] if batch_first or key.dim() == 2 else key.shape[0]
+    batch_size = 1 if out.dim() == 2 else out.shape[0 if batch_first else 1]
 
     # the query and output projections are embed_dim wide, the key and value ones are as wide as what they read.
     # Scores against the keys and the weighted sum of the values are tgt_len x src_len x embed_dim each once the

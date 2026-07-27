@@ -69,11 +69,6 @@ UPSAMPLE_OPS_PER_ELEMENT = {
 }
 
 
-def calculate_upsample(mode: str, output_size):
-    """Calculate the operations required for various upsample methods based on mode and output size."""
-    return int(output_size * UPSAMPLE_OPS_PER_ELEMENT.get(mode, 0))
-
-
 def calculate_linear(in_feature, num_elements):
     """Calculate the linear operation count for given input feature and number of elements."""
     return int(in_feature * num_elements)
