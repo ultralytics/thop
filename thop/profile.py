@@ -167,11 +167,12 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         total_ops = total_ops.item()
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind the hooks or the buffers this call created
-        _restore_modes(model, prev_training)
         for handler in handler_collection:
             handler.remove()
-        for m in model.modules():  # a pop covers the non-leaf modules add_hooks never gave a buffer to
-            m._buffers.pop("total_ops", None)
+        for m in model.modules():
+            if not list(m.children()):  # add_hooks only ever buffered leaves, so a container's is the caller's own
+                m._buffers.pop("total_ops", None)
+        _restore_modes(model, prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     return total_ops, total_params
 
@@ -248,11 +249,11 @@ def profile(
         # identity and covers all three, and is what nn.Module reports for the same model.
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind the hooks or the attribute this call created
-        _restore_modes(model, prev_training)  # reset model to original status
         for handler in handler_collection.values():
             handler.remove()
         for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attribute
             m.__dict__.pop("total_ops", None)
+        _restore_modes(model, prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict
