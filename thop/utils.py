@@ -30,14 +30,12 @@ def clever_format(nums, format="%.2f"):
     clever_nums = []
 
     for num in nums:
-        if num > 1e12:
-            clever_nums.append(format % (num / 1e12) + "T")
-        elif num > 1e9:
-            clever_nums.append(format % (num / 1e9) + "G")
-        elif num > 1e6:
-            clever_nums.append(format % (num / 1e6) + "M")
-        elif num > 1e3:
-            clever_nums.append(format % (num / 1e3) + "K")
+        for unit, scale in (("T", 1e12), ("G", 1e9), ("M", 1e6), ("K", 1e3)):
+            # abs() and >=, not the value against >: a negative satisfied no comparison and came out unscaled,
+            # and an exact power of 1000 belongs to the unit it is one of rather than to the one below it
+            if abs(num) >= scale:
+                clever_nums.append(format % (num / scale) + unit)
+                break
         else:
             clever_nums.append(format % num + "B")
 
