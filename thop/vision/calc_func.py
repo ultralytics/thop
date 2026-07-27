@@ -1,6 +1,6 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-from torch.nn.parameter import is_lazy
+from torch.nn.parameter import UninitializedParameter
 
 
 def l_prod(in_list):
@@ -12,10 +12,11 @@ def l_prod(in_list):
 
 
 def calculate_parameters(param_list):
-    """Calculate the total number of parameters in a list of tensors using the product of their shapes."""
+    """Sum the element counts of an iterable of parameters, skipping any a lazy module has not created yet."""
     # a lazy module's parameters hold no elements until its first forward pass, and asking one for its
-    # element count raises rather than answering 0, so they are skipped instead of being counted
-    return sum(p.nelement() for p in param_list if not is_lazy(p))
+    # element count raises rather than answering 0, so they are skipped instead of being counted.
+    # isinstance rather than torch.nn.parameter.is_lazy: that helper only exists from torch 1.9 on
+    return sum(p.nelement() for p in param_list if not isinstance(p, UninitializedParameter))
 
 
 def calculate_zero_ops():

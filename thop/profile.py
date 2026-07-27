@@ -80,7 +80,7 @@ register_hooks = {
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
-    """Profiles a PyTorch model's operations and parameters, applying either custom or default hooks."""
+    """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = []
     types_collection = set()
     if custom_ops is None:
@@ -112,7 +112,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
                 print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
 
         if fn is not None:
             handler = m.register_forward_hook(fn)
@@ -192,11 +192,12 @@ def profile(
                 print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
 
         if fn is not None:
-            # every registered hook forces nn.Module.__call__ down its slow path, so the rule is registered
-            # directly rather than through a wrapper: it is the only work a forward pass has to do here
+            # registered directly, as profile_origin does and as every release before 2.1.0 did, so a forward
+            # pass spends no Python frame beyond the rule itself. A rule must therefore return None: its
+            # return value is the module's output, per the forward-hook contract documented in the README
             handler_collection[m] = m.register_forward_hook(fn)
         types_collection.add(m_type)
 
@@ -204,8 +205,8 @@ def profile(
 
     def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
         """Recursively counts the total operations of the given PyTorch module and its submodules."""
-        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the documented
-        # `m.total_ops += torch.DoubleTensor([macs])` recipe does, and callers are owed plain Python numbers
+        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the accumulator
+        # in tests/test_custom_ops.py does, and callers are owed plain Python numbers
         total_ops = float(module.total_ops)
         ret_dict = {}
         for n, m in module.named_children():
@@ -236,7 +237,7 @@ def profile(
         # op-counting rule, and misses branches the forward pass skipped. parameters() dedups by tensor
         # identity and covers all three, and is what nn.Module reports for the same model.
         total_params = float(calculate_parameters(model.parameters()))
-    finally:  # no failure, at any stage, may leave hooks or attributes behind
+    finally:  # no failure, at any stage, may leave behind the hooks or the attribute this call created
         # reset model to original status
         model.train(prev_training_status)
         for handler in handler_collection.values():
