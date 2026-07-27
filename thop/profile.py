@@ -104,15 +104,20 @@ def _restore_modes(model, prev_training):
 
     model.train() alone cannot do it: it recurses, so a tree holding more than one mode collapses into the root's. It
     runs first all the same, because a module that overrides train() — SAM's TinyViT attention drops a tensor it caches
-    for eval — restores state of its own that no flag assignment reaches. The second pass then repairs the modules that
-    call flattened, through train() for the same reason, and a module whose flag is already right is left alone. Modules
-    come in parent-first order, so repairing a parent's subtree cannot undo a child repaired earlier: the child is
-    visited afterwards.
+    for eval — restores state of its own that no flag assignment reaches. The second pass repairs the modules that call
+    flattened, through train() for the same reason.
+
+    The third pass exists because the module graph is a DAG, not a tree: a module reached through two parents that
+    disagree about its mode cannot be served by any order of recursive calls, and modules() yields it once, at the first
+    parent, so the second parent's repair broadcasts over it unanswered. Assigning the flag is the only thing that
+    always lands, and by then every override has already run.
     """
     model.train(prev_training[model])
     for m, was_training in prev_training.items():
         if m.training != was_training:
             m.train(was_training)
+    for m, was_training in prev_training.items():
+        m.training = was_training
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
