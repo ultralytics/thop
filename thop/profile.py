@@ -167,8 +167,9 @@ def profile(
     verbose=True,
     ret_layer_info=False,
     report_missing=False,
+    stride=None,
 ):
-    """Profiles a PyTorch model, returning total operations, parameters, and optionally layer-wise details."""
+    """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs."""
     handler_collection = {}
     types_collection = set()
     if custom_ops is None:
@@ -246,9 +247,60 @@ def profile(
     try:
         model.eval()
         model.apply(add_hooks)
-        with torch.no_grad():
-            model(*inputs)
-        total_ops, total_params, ret_dict = dfs_count(model)
+
+        def run(input_values):
+            """Profile one set of inputs while reusing the registered hooks."""
+            counted.clear()
+            for m in model.modules():
+                m.__dict__["total_ops"] = 0
+                m.__dict__["total_params"] = 0
+            with torch.no_grad():
+                model(*input_values)
+            return dfs_count(model)
+
+        if stride is None or ret_layer_info:
+            total_ops, total_params, ret_dict = run(inputs)
+        else:
+            if len(inputs) != 1 or not isinstance(inputs[0], torch.Tensor) or inputs[0].ndim != 4:
+                raise ValueError("stride requires inputs to contain one BCHW image tensor")
+            stride = (stride, stride) if isinstance(stride, int) else tuple(stride)
+            if len(stride) != 2 or min(stride) < 1:
+                raise ValueError("stride must be a positive integer or a pair of positive integers")
+
+            image = inputs[0]
+            target_height, target_width = image.shape[-2:]
+            fixed_ops = (
+                nn.Linear,
+                nn.AdaptiveAvgPool1d,
+                nn.AdaptiveAvgPool2d,
+                nn.AdaptiveAvgPool3d,
+                nn.RNNBase,
+                nn.RNNCell,
+                nn.GRUCell,
+                nn.LSTMCell,
+            )
+            required_samples = 2 if custom_ops or any(isinstance(m, fixed_ops) for m in model.modules()) else 1
+            samples = []
+            proxy_area = stride[0] * stride[1]
+            if target_height % stride[0] == target_width % stride[1] == 0 and proxy_area < target_height * target_width:
+                try:
+                    for width in (stride[1], stride[1] * 2)[:required_samples]:
+                        ops, params, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
+                        samples.append((stride[0] * width, ops, params))
+                except Exception:
+                    samples.clear()
+
+            if len(samples) == 2:
+                (area1, ops1, _), (area2, ops2, total_params) = samples
+                slope = (ops2 - ops1) / (area2 - area1)
+                total_ops = slope * target_height * target_width + ops1 - slope * area1
+                ret_dict = {}
+            elif len(samples) == 1 and required_samples == 1:
+                area, ops, total_params = samples[0]
+                total_ops = ops * target_height * target_width / area
+                ret_dict = {}
+            else:
+                total_ops, total_params, ret_dict = run(inputs)
     finally:  # no failure, at any stage, may leave hooks or buffers behind
         # reset model to original status
         model.train(prev_training_status)
