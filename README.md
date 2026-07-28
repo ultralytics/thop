@@ -49,9 +49,20 @@ print(f"MACs: {macs}, Parameters: {params}")
 # Expected output: MACs: 4133742592.0, Parameters: 25557032.0
 ```
 
+For image models, pass the target-size input and the model stride to estimate MACs from smaller stride-aligned
+profiles. `profile()` retains a single-profile fast path for spatial-only models, fits two points when size-independent
+operations may be present, and falls back to the target input when the smaller inputs are unsuitable:
+
+```python
+inputs = (torch.randn(1, 3, 640, 640),)
+macs, params = profile(model, inputs=inputs, stride=32)
+```
+
+Calls that omit `stride` retain the exact profiling behavior shown in the basic example.
+
 ### Define Custom Rules for Third-Party Modules
 
-Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`. It must return nothing: PyTorch replaces a module's output with whatever its forward hook returns. Parameters need no hook — they are read from the module tree. A rule covers subclasses of the type it is registered for, the nearest registered ancestor winning, so an entry for `nn.Conv2d` also counts an `nn.Conv2d` subclass. A subclass whose forward computes something different needs its own entry, or it is counted as its base.
+Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`. Parameters need no hook — they are read from the module tree. A rule covers subclasses of the type it is registered for, the nearest registered ancestor winning, so an entry for `nn.Conv2d` also counts an `nn.Conv2d` subclass. A subclass whose forward computes something different needs its own entry, or it is counted as its base.
 
 ```python
 import torch
