@@ -50,6 +50,17 @@ print(f"MACs: {macs}, Parameters: {params}")
 # Expected output: MACs: 4133742592.0, Parameters: 25557032.0
 ```
 
+For image models, pass the target-size input and the model stride to estimate MACs from smaller stride-aligned
+profiles. `profile()` retains a single-profile fast path for spatial-only models, fits two points when size-independent
+operations may be present, and falls back to the target input when the smaller inputs are unsuitable:
+
+```python
+inputs = (torch.randn(1, 3, 640, 640),)
+macs, params = profile(model, inputs=inputs, stride=32)
+```
+
+Calls that omit `stride` retain the exact profiling behavior shown in the basic example.
+
 ### Define Custom Rules for Third-Party Modules
 
 Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`.
