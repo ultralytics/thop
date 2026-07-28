@@ -63,7 +63,7 @@ Calls that omit `stride` retain the exact profiling behavior shown in the basic 
 
 ### Define Custom Rules for Third-Party Modules
 
-Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`.
+Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`. Parameters need no hook — they are read from the module tree.
 
 ```python
 import torch

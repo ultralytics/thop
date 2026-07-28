@@ -52,7 +52,7 @@ print(f"MACs: {macs}, Parameters: {params}")
 
 ### 为第三方模块定义自定义规则
 
-将不受支持的模块类型映射到前向钩子函数。钩子函数接收模块、输入和输出，并将运算量累加到 `module.total_ops`。
+将不受支持的模块类型映射到前向钩子函数。钩子函数接收模块、输入和输出，并将运算量累加到 `module.total_ops`。参数量无需钩子处理——它直接从模块树读取。
 
 ```python
 import torch

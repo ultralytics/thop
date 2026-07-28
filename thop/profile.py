@@ -80,7 +80,7 @@ register_hooks = {
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
-    """Profiles a PyTorch model's operations and parameters, applying either custom or default hooks."""
+    """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = []
     types_collection = set()
     if custom_ops is None:
@@ -92,17 +92,12 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         if list(m.children()):
             return
 
-        if hasattr(m, "total_ops") or hasattr(m, "total_params"):
+        if hasattr(m, "total_ops"):
             logging.warning(
-                f"Either .total_ops or .total_params is already defined in {m!s}. "
-                "Be careful, it might change your code's behavior."
+                f".total_ops is already defined in {m!s}. Be careful, it might change your code's behavior."
             )
 
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
-        m.register_buffer("total_params", torch.zeros(1, dtype=default_dtype))
-
-        for p in m.parameters():
-            m.total_params += torch.DoubleTensor([p.numel()])
 
         m_type = type(m)
 
@@ -117,7 +112,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
                 print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
 
         if fn is not None:
             handler = m.register_forward_hook(fn)
@@ -133,15 +128,13 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         model(*inputs)
 
     total_ops = 0
-    total_params = 0
     for m in model.modules():
         if list(m.children()):  # skip for non-leaf module
             continue
         total_ops += m.total_ops
-        total_params += m.total_params
 
     total_ops = total_ops.item()
-    total_params = total_params.item()
+    total_params = float(calculate_parameters(model.parameters()))
 
     # reset model to original status
     model.train(training)
@@ -154,8 +147,6 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             continue
         if "total_ops" in m._buffers:
             m._buffers.pop("total_ops")
-        if "total_params" in m._buffers:
-            m._buffers.pop("total_params")
 
     return total_ops, total_params
 
@@ -179,15 +170,14 @@ def profile(
         verbose = True
 
     def add_hooks(m: nn.Module):
-        """Registers hooks to a neural network module to track total operations and parameters."""
+        """Registers a hook on a neural network module to track its total operations."""
         if m in handler_collection:  # model.apply() revisits modules shared by several parents, e.g. a common act
             return
 
-        # plain int attributes, not float64 buffers: buffer reads go through nn.Module.__getattr__ and every
+        # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
         m.__dict__["total_ops"] = 0
-        m.__dict__["total_params"] = 0
 
         m_type = type(m)
 
@@ -203,44 +193,39 @@ def profile(
                 print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
         else:
             if m_type not in types_collection and report_missing:
-                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs and zero Params.")
+                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
 
         if fn is not None:
-            # One hook, not two: every registered hook forces nn.Module.__call__ down its slow path, so the op
-            # rule and the parameter tally share a single callback. Parameters cannot change during a forward
-            # pass, so the count is taken once here rather than recomputed on each call.
-            nparams = calculate_parameters(m.parameters(recurse=False))
 
-            def counter(m, x, y, fn=fn, nparams=nparams):
-                """Applies the module's op-counting rule and records its parameter count."""
+            def counter(m, x, y, fn=fn):
+                """Apply the counting rule without allowing its return value to replace the module output."""
                 fn(m, x, y)
-                m.__dict__["total_params"] = nparams
 
             handler_collection[m] = m.register_forward_hook(counter)
         types_collection.add(m_type)
 
     counted = set()
 
-    def dfs_count(module: nn.Module, prefix="\t") -> (int, int):
-        """Recursively counts the total operations and parameters of the given PyTorch module and its submodules."""
-        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the documented
-        # `m.total_ops += torch.DoubleTensor([macs])` recipe does, and callers are owed plain Python numbers
-        total_ops, total_params = float(module.total_ops), float(module.total_params)
+    def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
+        """Recursively counts the total operations of the given PyTorch module and its submodules."""
+        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the accumulator
+        # in tests/test_custom_ops.py does, and callers are owed plain Python numbers
+        total_ops = float(module.total_ops)
         ret_dict = {}
         for n, m in module.named_children():
             next_dict = {}
             if m in handler_collection and not isinstance(m, (nn.Sequential, nn.ModuleList)):
-                m_ops, m_params = float(m.total_ops), float(m.total_params)
+                m_ops = float(m.total_ops)
             else:
-                m_ops, m_params, next_dict = dfs_count(m, prefix=prefix + "\t")
-            ret_dict[n] = (m_ops, m_params, next_dict)
+                m_ops, next_dict = dfs_count(m, prefix=prefix + "\t")
+            if ret_layer_info:  # the per-layer tree is the caller's opt-in, so it is not built when discarded
+                ret_dict[n] = (m_ops, float(calculate_parameters(m.parameters())), next_dict)
             if m in counted:  # a module reached through several parents already accumulated all of its calls
                 continue
             counted.add(m)
             total_ops += m_ops
-            total_params += m_params
-        # print(prefix, module._get_name(), (total_ops, total_params))
-        return total_ops, total_params, ret_dict
+        # print(prefix, module._get_name(), total_ops)
+        return total_ops, ret_dict
 
     prev_training_status = model.training
 
@@ -253,13 +238,12 @@ def profile(
             counted.clear()
             for m in model.modules():
                 m.__dict__["total_ops"] = 0
-                m.__dict__["total_params"] = 0
             with torch.no_grad():
                 model(*input_values)
             return dfs_count(model)
 
         if stride is None or ret_layer_info:
-            total_ops, total_params, ret_dict = run(inputs)
+            total_ops, ret_dict = run(inputs)
         else:
             if len(inputs) != 1 or not isinstance(inputs[0], torch.Tensor) or inputs[0].ndim != 4:
                 raise ValueError("stride requires inputs to contain one BCHW image tensor")
@@ -285,30 +269,32 @@ def profile(
             if target_height % stride[0] == target_width % stride[1] == 0 and proxy_area < target_height * target_width:
                 try:
                     for width in (stride[1], stride[1] * 2)[:required_samples]:
-                        ops, params, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
-                        samples.append((stride[0] * width, ops, params))
+                        ops, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
+                        samples.append((stride[0] * width, ops))
                 except Exception:
                     samples.clear()
 
             if len(samples) == 2:
-                (area1, ops1, _), (area2, ops2, total_params) = samples
+                (area1, ops1), (area2, ops2) = samples
                 slope = (ops2 - ops1) / (area2 - area1)
                 total_ops = slope * target_height * target_width + ops1 - slope * area1
                 ret_dict = {}
             elif len(samples) == 1 and required_samples == 1:
-                area, ops, total_params = samples[0]
+                area, ops = samples[0]
                 total_ops = ops * target_height * target_width / area
                 ret_dict = {}
             else:
-                total_ops, total_params, ret_dict = run(inputs)
-    finally:  # no failure, at any stage, may leave hooks or buffers behind
+                total_ops, ret_dict = run(inputs)
+        # Parameters belong to the module tree, not to the traced call. parameters() deduplicates shared tensors
+        # and includes unsupported or unexecuted modules.
+        total_params = float(calculate_parameters(model.parameters()))
+    finally:  # no failure, at any stage, may leave behind hooks or temporary attributes
         # reset model to original status
         model.train(prev_training_status)
         for handler in handler_collection.values():
             handler.remove()
-        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attributes
+        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attribute
             m.__dict__.pop("total_ops", None)
-            m.__dict__.pop("total_params", None)
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict
