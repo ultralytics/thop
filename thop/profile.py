@@ -269,10 +269,20 @@ def profile(
 
             image = inputs[0]
             target_height, target_width = image.shape[-2:]
-            fixed_ops = (nn.Linear, nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d, nn.AdaptiveAvgPool3d, nn.RNNBase)
+            fixed_ops = (
+                nn.Linear,
+                nn.AdaptiveAvgPool1d,
+                nn.AdaptiveAvgPool2d,
+                nn.AdaptiveAvgPool3d,
+                nn.RNNBase,
+                nn.RNNCell,
+                nn.GRUCell,
+                nn.LSTMCell,
+            )
             required_samples = 2 if custom_ops or any(isinstance(m, fixed_ops) for m in model.modules()) else 1
             samples = []
-            if target_height % stride[0] == target_width % stride[1] == 0 and stride[0] < target_height:
+            proxy_area = stride[0] * stride[1]
+            if target_height % stride[0] == target_width % stride[1] == 0 and proxy_area < target_height * target_width:
                 try:
                     for width in (stride[1], stride[1] * 2)[:required_samples]:
                         ops, params, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
