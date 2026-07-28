@@ -6,6 +6,7 @@
 
 [THOP](https://github.com/ultralytics/thop) 用于分析 [PyTorch](https://pytorch.org/) 模型的乘加运算次数（MACs）和参数量。它轻量、易扩展，并由 [Ultralytics](https://www.ultralytics.com/) 维护。
 
+[![THOP CI](https://github.com/ultralytics/thop/actions/workflows/ci.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/ci.yml)
 [![Ultralytics Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
