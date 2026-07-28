@@ -12,7 +12,6 @@ from thop.vision.calc_func import (
     calculate_conv2d_flops,
     calculate_linear,
     calculate_norm,
-    calculate_relu_flops,
     calculate_softmax,
     calculate_zero_ops,
     l_prod,
@@ -92,16 +91,15 @@ def count_prelu(m, x, y):
         m.total_ops += x.numel()
 
 
-def count_relu(m, x, y):
-    """Calculate and update the total operation counts for a ReLU layer."""
-    x = x[0]
-    m.total_ops += calculate_relu_flops(list(x.shape))
-
-
 def count_softmax(m, x, y):
     """Calculate and update the total operation counts for a Softmax layer in a PyTorch model."""
     x = x[0]
-    nfeatures = x.size()[m.dim]
+    # nn.Softmax(dim=None) is deprecated but still legal and still runs, resolving the dimension itself, so the
+    # count follows the same rule rather than raising: dimension 0 for 0-, 1- and 3-dimensional input, 1 otherwise
+    dim = m.dim if m.dim is not None else 0 if x.dim() in {0, 1, 3} else 1
+    # a scalar normalizes over itself, which no shape entry can say: torch returns 1.0 for it, so the cost is
+    # the one exponential and the one division that produce that, and indexing the empty shape only raises
+    nfeatures = x.size()[dim] if x.dim() else 1
     batch_size = x.numel() // nfeatures
 
     m.total_ops += calculate_softmax(batch_size, nfeatures)
@@ -147,26 +145,3 @@ def count_linear(m, x, y):
     num_elements = y.numel()
 
     m.total_ops += calculate_linear(total_mul, num_elements)
-
-
-def count_multihead_attention(m: nn.MultiheadAttention, x, y):
-    """Counts the four projections and the two attention matrix products of an nn.MultiheadAttention layer."""
-    # the target length comes from the attention output, which carries the query's shape, and the source length from
-    # the key: value is free to arrive as a keyword, which a forward hook never sees, and it is required to have the
-    # key's sequence length anyway. Unbatched input drops the batch dimension, and batch_first swaps the other two
-    out, key = y[0], x[1]
-    batch_first = getattr(m, "batch_first", False)  # added in torch 1.9; before it the layout is always (L, N, E)
-    embed_dim = out.shape[-1]
-    tgt_len = out.shape[-2] if batch_first or out.dim() == 2 else out.shape[0]
-    src_len = key.shape[-2] if batch_first or key.dim() == 2 else key.shape[0]
-    batch_size = 1 if out.dim() == 2 else out.shape[0 if batch_first else 1]
-
-    # the query and output projections are embed_dim wide, the key and value ones are as wide as what they read.
-    # Scores against the keys and the weighted sum of the values are tgt_len x src_len x embed_dim each once the
-    # heads are summed, so num_heads does not appear: every head contributes embed_dim // num_heads of it
-    projections = embed_dim * (2 * tgt_len * embed_dim + src_len * (m.kdim + m.vdim))
-    # add_bias_kv appends a learned key and value position and add_zero_attn a zero one, both after the projections,
-    # so each lengthens the two matrix products by one source position without adding any projection work
-    attended = src_len + (m.bias_k is not None) + m.add_zero_attn
-    attention = 2 * tgt_len * attended * embed_dim
-    m.total_ops += batch_size * (projections + attention)
