@@ -6,6 +6,7 @@
 
 [THOP](https://github.com/ultralytics/thop) profiles [PyTorch](https://pytorch.org/) models by counting Multiply-Accumulate Operations (MACs) and parameters. It is lightweight, easy to extend, and maintained by [Ultralytics](https://www.ultralytics.com/).
 
+[![THOP CI](https://github.com/ultralytics/thop/actions/workflows/ci.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/ci.yml)
 [![Ultralytics Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
