@@ -1,0 +1,43 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# THOP Continuous Integration (CI) GitHub Actions tests
+
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request: # unfiltered, as ultralytics/ultralytics is: a pull request stacked on a feature branch runs too
+  schedule:
+    - cron: "0 9 * * *" # runs at 09:00 UTC every day, so a torch release that breaks counting shows up here first
+  workflow_dispatch:
+
+jobs:
+  Tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.14"]
+        torch: [latest]
+        include:
+          - python: "3.8" # the requires-python floor; torch 1.8.0 requires python >=3.6, <=3.9
+            torch: "1.8.0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ultralytics/actions/setup-uv@main
+        with:
+          python-version: ${{ matrix.python }}
+          activate-environment: true
+      - name: Install requirements
+        run: |
+          torch=""
+          if [ "${{ matrix.torch }}" != "latest" ]; then
+              torch="torch==${{ matrix.torch }}"
+          fi
+          uv pip install -e . $torch pytest --torch-backend cpu
+      - name: Run tests
+        run: python -m pytest tests -v
