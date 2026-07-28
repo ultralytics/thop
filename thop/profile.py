@@ -110,6 +110,7 @@ def _restore_modes(prev_training):
     for m, was_training in prev_training.items():
         m.training = was_training
 
+
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = {}  # every module this call buffered, against its hook where a rule gave it one
