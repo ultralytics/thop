@@ -7,7 +7,6 @@ from torch import nn
 from torch.nn.modules.conv import _ConvNd
 
 from thop.vision.calc_func import (
-    UPSAMPLE_OPS_PER_ELEMENT,
     calculate_avgpool,
     calculate_conv2d_flops,
     calculate_linear,
@@ -129,7 +128,14 @@ def count_adap_avgpool(m, x, y):
 # TODO: verify the accuracy
 def count_upsample(m, x, y):
     """Update total operations counter for upsampling layers based on the mode used."""
-    ops_per_element = UPSAMPLE_OPS_PER_ELEMENT.get(m.mode)
+    ops_per_element = {
+        "nearest": 0,
+        "nearest-exact": 0,
+        "linear": 5,
+        "bilinear": 11,
+        "bicubic": 259,
+        "trilinear": 31,
+    }.get(m.mode)
     if ops_per_element is None:  # one lookup owns both the cost and whether the mode has one at all
         logging.getLogger(__name__).warning(f"mode {m.mode} is not implemented yet, take it a zero op")
         ops_per_element = 0

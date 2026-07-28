@@ -57,18 +57,6 @@ def calculate_avgpool(input_size):
     return int(input_size)
 
 
-# the interpolation cost of one output element, per upsampling mode. The nearest-neighbour modes gather an input
-# element and do no arithmetic at all, so they cost nothing, as nn.MaxPool2d and nn.ZeroPad2d already do here
-UPSAMPLE_OPS_PER_ELEMENT = {
-    "nearest": 0,
-    "nearest-exact": 0,
-    "linear": 5,
-    "bilinear": 11,
-    "bicubic": 224 + 35,
-    "trilinear": 13 * 2 + 5,
-}
-
-
 def calculate_linear(in_feature, num_elements):
     """Calculate the linear operation count for given input feature and number of elements."""
     return int(in_feature * num_elements)
