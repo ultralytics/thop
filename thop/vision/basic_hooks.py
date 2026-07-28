@@ -12,7 +12,6 @@ from thop.vision.calc_func import (
     calculate_conv2d_flops,
     calculate_linear,
     calculate_norm,
-    calculate_relu_flops,
     calculate_softmax,
     calculate_upsample,
     calculate_zero_ops,
@@ -93,16 +92,15 @@ def count_prelu(m, x, y):
         m.total_ops += x.numel()
 
 
-def count_relu(m, x, y):
-    """Calculate and update the total operation counts for a ReLU layer."""
-    x = x[0]
-    m.total_ops += calculate_relu_flops(list(x.shape))
-
-
 def count_softmax(m, x, y):
     """Calculate and update the total operation counts for a Softmax layer in a PyTorch model."""
     x = x[0]
-    nfeatures = x.size()[m.dim]
+    # nn.Softmax(dim=None) is deprecated but still legal and still runs, resolving the dimension itself, so the
+    # count follows the same rule rather than raising: dimension 0 for 0-, 1- and 3-dimensional input, 1 otherwise
+    dim = m.dim if m.dim is not None else 0 if x.dim() in {0, 1, 3} else 1
+    # a scalar normalizes over itself, which no shape entry can say: torch returns 1.0 for it, so the cost is
+    # the one exponential and the one division that produce that, and indexing the empty shape only raises
+    nfeatures = x.size()[dim] if x.dim() else 1
     batch_size = x.numel() // nfeatures
 
     m.total_ops += calculate_softmax(batch_size, nfeatures)

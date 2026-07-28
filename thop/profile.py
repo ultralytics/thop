@@ -17,7 +17,6 @@ from thop.vision.basic_hooks import (
     count_linear,
     count_normalization,
     count_prelu,
-    count_relu,
     count_softmax,
     count_upsample,
     logging,
@@ -31,7 +30,11 @@ from .vision.calc_func import calculate_parameters
 default_dtype = torch.float64
 
 register_hooks = {
-    nn.ZeroPad2d: zero_ops,  # padding does not involve any multiplication.
+    # the constant-padding and dropout families through the private base each shares, as the norm families
+    # below need for the same reason: naming the two concrete classes left their 10 siblings rule-less, so
+    # report_missing warned about layers that have nothing to count and taught the reader to ignore it
+    nn.modules.padding._ConstantPadNd: zero_ops,  # padding does not involve any multiplication
+    nn.modules.dropout._DropoutNd: zero_ops,
     nn.Conv1d: count_convNd,
     nn.Conv2d: count_convNd,
     nn.Conv3d: count_convNd,
@@ -47,7 +50,7 @@ register_hooks = {
     nn.Softmax: count_softmax,
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
-    nn.LeakyReLU: count_relu,
+    nn.LeakyReLU: zero_ops,
     nn.MaxPool1d: zero_ops,
     nn.MaxPool2d: zero_ops,
     nn.MaxPool3d: zero_ops,
@@ -61,7 +64,6 @@ register_hooks = {
     nn.AdaptiveAvgPool2d: count_adap_avgpool,
     nn.AdaptiveAvgPool3d: count_adap_avgpool,
     nn.Linear: count_linear,
-    nn.Dropout: zero_ops,
     nn.Upsample: count_upsample,
     nn.UpsamplingBilinear2d: count_upsample,
     nn.UpsamplingNearest2d: count_upsample,
@@ -100,9 +102,18 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
+def _restore_modes(prev_training):
+    """Restore each module's training mode."""
+    for m, was_training in prev_training.items():
+        if m.training != was_training:
+            m.train(was_training)
+    for m, was_training in prev_training.items():
+        m.training = was_training
+
+
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
-    handler_collection = []
+    handler_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -110,7 +121,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         verbose = True
 
     def add_hooks(m):
-        if list(m.children()):
+        if list(m.children()) or m in handler_collection:
             return
 
         if hasattr(m, "total_ops"):
@@ -118,43 +129,36 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
                 f".total_ops is already defined in {m!s}. Be careful, it might change your code's behavior."
             )
 
-        m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
-
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
+
+        m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
+        handler_collection[m] = None
         if fn is not None:
-            handler = m.register_forward_hook(fn)
-            handler_collection.append(handler)
+            handler_collection[m] = m.register_forward_hook(fn)
         types_collection.add(m_type)
 
-    training = model.training
+    prev_training = {m: m.training for m in model.modules()}
 
-    model.eval()
-    model.apply(add_hooks)
+    try:
+        model.eval()
+        model.apply(add_hooks)
 
-    with torch.no_grad():
-        model(*inputs)
+        with torch.no_grad():
+            model(*inputs)
 
-    total_ops = 0
-    for m in model.modules():
-        if list(m.children()):  # skip for non-leaf module
-            continue
-        total_ops += m.total_ops
+        total_ops = 0
+        for m in handler_collection:
+            total_ops += m.total_ops
 
-    total_ops = total_ops.item()
-    total_params = float(calculate_parameters(model.parameters()))
-
-    # reset model to original status
-    model.train(training)
-    for handler in handler_collection:
-        handler.remove()
-
-    # remove temporal buffers
-    for n, m in model.named_modules():
-        if list(m.children()):
-            continue
-        if "total_ops" in m._buffers:
-            m._buffers.pop("total_ops")
+        total_ops = total_ops.item()
+        total_params = float(calculate_parameters(model.parameters()))
+    finally:  # no failure, at any stage, may leave behind the hooks or the buffers this call created
+        for handler in filter(None, handler_collection.values()):
+            handler.remove()
+        for m in handler_collection:
+            m._buffers.pop("total_ops", None)
+        _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     return total_ops, total_params
 
@@ -182,13 +186,15 @@ def profile(
         if m in handler_collection:  # model.apply() revisits modules shared by several parents, e.g. a common act
             return
 
+        m_type = type(m)
+        fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
+
         # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
         m.__dict__["total_ops"] = 0
 
-        m_type = type(m)
-        fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
+        handler_collection[m] = None
         if fn is not None:
 
             def counter(m, x, y, fn=fn):
@@ -202,9 +208,8 @@ def profile(
 
     def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
         """Recursively counts the total operations of the given PyTorch module and its submodules."""
-        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the accumulator
-        # in tests/test_custom_ops.py does, and callers are owed plain Python numbers
-        total_ops = float(module.total_ops)
+        # A custom rule may accumulate a tensor, and a module added during the forward has no temporary attribute.
+        total_ops = float(module.__dict__.get("total_ops", 0))
         ret_dict = {}
         for n, m in module.named_children():
             # every child is walked, whether or not it carries a rule of its own: a rule accounts for its
@@ -220,7 +225,7 @@ def profile(
         # print(prefix, module._get_name(), total_ops)
         return total_ops, ret_dict
 
-    prev_training_status = model.training
+    prev_training = {m: m.training for m in model.modules()}  # per module: model.eval() below recurses
 
     try:
         model.eval()
@@ -229,7 +234,7 @@ def profile(
         def run(input_values):
             """Profile one set of inputs while reusing the registered hooks."""
             counted.clear()
-            for m in model.modules():
+            for m in handler_collection:
                 m.__dict__["total_ops"] = 0
             with torch.no_grad():
                 model(*input_values)
@@ -282,12 +287,11 @@ def profile(
         # and includes unsupported or unexecuted modules.
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind hooks or temporary attributes
-        # reset model to original status
-        model.train(prev_training_status)
-        for handler in handler_collection.values():
+        for handler in filter(None, handler_collection.values()):
             handler.remove()
-        for m in model.modules():  # add_hooks ran on every module, so every module carries the temporary attribute
+        for m in handler_collection:
             m.__dict__.pop("total_ops", None)
+        _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict
