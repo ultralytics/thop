@@ -102,20 +102,8 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
-def _restore_modes(model, prev_training):
-    """Put every module back into the training mode it was in before profiling.
-
-    model.train() alone cannot do it: it recurses, so a tree holding more than one mode collapses into the root's. It
-    runs first all the same, because a module that overrides train() — SAM's TinyViT attention drops a tensor it caches
-    for eval — restores state of its own that no flag assignment reaches. The second pass repairs the modules that call
-    flattened, through train() for the same reason.
-
-    The third pass exists because the module graph is a DAG, not a tree: a module reached through two parents that
-    disagree about its mode cannot be served by any order of recursive calls, and modules() yields it once, at the first
-    parent, so the second parent's repair broadcasts over it unanswered. Assigning the flag is the only thing that
-    always lands, and by then every override has already run.
-    """
-    model.train(prev_training[model])
+def _restore_modes(prev_training):
+    """Restore each module's training mode."""
     for m, was_training in prev_training.items():
         if m.training != was_training:
             m.train(was_training)
@@ -150,7 +138,9 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
-        handler_collection[m] = m.register_forward_hook(fn) if fn is not None else None
+        handler_collection[m] = None
+        if fn is not None:
+            handler_collection[m] = m.register_forward_hook(fn)
         types_collection.add(m_type)
 
     # every module's own flag, not just the root's: model.eval() below recurses, so restoring the root alone
@@ -178,7 +168,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         # missing the object that was — leaving a float64 total_ops in the state_dict of a module the caller holds
         for m in handler_collection:
             m._buffers.pop("total_ops", None)
-        _restore_modes(model, prev_training)  # last: it calls train(), which is the caller's code and may raise
+        _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     return total_ops, total_params
 
@@ -190,8 +180,9 @@ def profile(
     verbose=True,
     ret_layer_info=False,
     report_missing=False,
+    stride=None,
 ):
-    """Profiles a PyTorch model, returning total operations, parameters, and optionally layer-wise details."""
+    """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs."""
     handler_collection = {}
     types_collection = set()
     if custom_ops is None:
@@ -215,12 +206,14 @@ def profile(
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
         m.__dict__["total_ops"] = 0
 
-        # registered directly, as profile_origin does and as every release before 2.1.0 did, so a forward pass
-        # spends no Python frame beyond the rule itself. A rule must therefore return None: its return value is
-        # the module's output, per the forward-hook contract documented in the README. A module with no rule is
-        # recorded against None, so the collection is every module this call touched and the early return above
-        # reaches it as well
-        handler_collection[m] = m.register_forward_hook(fn) if fn is not None else None
+        handler_collection[m] = None
+        if fn is not None:
+
+            def counter(m, x, y, fn=fn):
+                """Apply the counting rule without allowing its return value to replace the module output."""
+                fn(m, x, y)
+
+            handler_collection[m] = m.register_forward_hook(counter)
         types_collection.add(m_type)
 
     counted = set()
@@ -252,20 +245,68 @@ def profile(
     try:
         model.eval()
         model.apply(add_hooks)
-        with torch.no_grad():
-            model(*inputs)
-        total_ops, ret_dict = dfs_count(model)
-        # parameters belong to the module tree, not to the traced call, so they are read off the tree: a
-        # per-module tally counts a weight shared by N modules N times, misses any module type without an
-        # op-counting rule, and misses branches the forward pass skipped. parameters() dedups by tensor
-        # identity and covers all three, and is what nn.Module reports for the same model.
+
+        def run(input_values):
+            """Profile one set of inputs while reusing the registered hooks."""
+            counted.clear()
+            for m in handler_collection:
+                m.__dict__["total_ops"] = 0
+            with torch.no_grad():
+                model(*input_values)
+            return dfs_count(model)
+
+        if stride is None or ret_layer_info:
+            total_ops, ret_dict = run(inputs)
+        else:
+            if len(inputs) != 1 or not isinstance(inputs[0], torch.Tensor) or inputs[0].ndim != 4:
+                raise ValueError("stride requires inputs to contain one BCHW image tensor")
+            stride = (stride, stride) if isinstance(stride, int) else tuple(stride)
+            if len(stride) != 2 or min(stride) < 1:
+                raise ValueError("stride must be a positive integer or a pair of positive integers")
+
+            image = inputs[0]
+            target_height, target_width = image.shape[-2:]
+            fixed_ops = (
+                nn.Linear,
+                nn.AdaptiveAvgPool1d,
+                nn.AdaptiveAvgPool2d,
+                nn.AdaptiveAvgPool3d,
+                nn.RNNBase,
+                nn.RNNCell,
+                nn.GRUCell,
+                nn.LSTMCell,
+            )
+            required_samples = 2 if custom_ops or any(isinstance(m, fixed_ops) for m in model.modules()) else 1
+            samples = []
+            proxy_area = stride[0] * stride[1]
+            if target_height % stride[0] == target_width % stride[1] == 0 and proxy_area < target_height * target_width:
+                try:
+                    for width in (stride[1], stride[1] * 2)[:required_samples]:
+                        ops, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
+                        samples.append((stride[0] * width, ops))
+                except Exception:
+                    samples.clear()
+
+            if len(samples) == 2:
+                (area1, ops1), (area2, ops2) = samples
+                slope = (ops2 - ops1) / (area2 - area1)
+                total_ops = slope * target_height * target_width + ops1 - slope * area1
+                ret_dict = {}
+            elif len(samples) == 1 and required_samples == 1:
+                area, ops = samples[0]
+                total_ops = ops * target_height * target_width / area
+                ret_dict = {}
+            else:
+                total_ops, ret_dict = run(inputs)
+        # Parameters belong to the module tree, not to the traced call. parameters() deduplicates shared tensors
+        # and includes unsupported or unexecuted modules.
         total_params = float(calculate_parameters(model.parameters()))
-    finally:  # no failure, at any stage, may leave behind the hooks or the attribute this call created
+    finally:  # no failure, at any stage, may leave behind hooks or temporary attributes
         for handler in filter(None, handler_collection.values()):
             handler.remove()
         for m in handler_collection:  # what add_hooks recorded, for the reason spelled out in profile_origin
             m.__dict__.pop("total_ops", None)
-        _restore_modes(model, prev_training)  # last: it calls train(), which is the caller's code and may raise
+        _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     if ret_layer_info:
         return total_ops, total_params, ret_dict
