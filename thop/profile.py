@@ -38,13 +38,11 @@ register_hooks = {
     nn.ConvTranspose1d: count_convtNd,
     nn.ConvTranspose2d: count_convtNd,
     nn.ConvTranspose3d: count_convtNd,
-    nn.BatchNorm1d: count_normalization,
-    nn.BatchNorm2d: count_normalization,
-    nn.BatchNorm3d: count_normalization,
+    # the batch- and instance-norm families through the base they share, which count_normalization is
+    # already annotated for. A lazy norm needs the base: LazyBatchNorm2d derives from _BatchNorm, not
+    # from BatchNorm2d, so its concrete counterpart is a sibling and never appears in its MRO.
+    nn.modules.batchnorm._NormBase: count_normalization,
     nn.LayerNorm: count_normalization,
-    nn.InstanceNorm1d: count_normalization,
-    nn.InstanceNorm2d: count_normalization,
-    nn.InstanceNorm3d: count_normalization,
     nn.PReLU: count_prelu,
     nn.Softmax: count_softmax,
     nn.ReLU: zero_ops,
@@ -75,8 +73,31 @@ register_hooks = {
     nn.LSTM: count_lstm,
     nn.Sequential: zero_ops,
     nn.PixelShuffle: zero_ops,
-    nn.SyncBatchNorm: count_normalization,
 }
+
+
+def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing):
+    """Return the counting rule for a module type, or None when no ancestor of it carries one.
+
+    The whole MRO is walked, most derived first, so a subclass of a supported type is counted by that type's rule
+    instead of being skipped, and a lazy module resolves through the class it derives from. custom_ops is consulted
+    ahead of the built-ins at every level, so a caller's own rule still wins.
+    """
+    first_seen = m_type not in types_collection
+    for t in m_type.__mro__:
+        if t in custom_ops:  # if defined in both op maps, custom_ops overwrites
+            fn = custom_ops[t]
+            if first_seen and verbose:
+                print(f"[INFO] Customize rule {fn.__qualname__}() {m_type}.")
+            return fn
+        if t in register_hooks:
+            fn = register_hooks[t]
+            if first_seen and verbose:
+                print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
+            return fn
+    if first_seen and report_missing:
+        prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
+    return None
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
@@ -100,20 +121,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
 
         m_type = type(m)
-
-        fn = None
-        if m_type in custom_ops:  # if defined both op maps, use custom_ops to overwrite.
-            fn = custom_ops[m_type]
-            if m_type not in types_collection and verbose:
-                print(f"[INFO] Customize rule {fn.__qualname__}() {m_type}.")
-        elif m_type in register_hooks:
-            fn = register_hooks[m_type]
-            if m_type not in types_collection and verbose:
-                print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
-        else:
-            if m_type not in types_collection and report_missing:
-                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
-
+        fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
         if fn is not None:
             handler = m.register_forward_hook(fn)
             handler_collection.append(handler)
@@ -180,21 +188,7 @@ def profile(
         m.__dict__["total_ops"] = 0
 
         m_type = type(m)
-
-        fn = None
-        if m_type in custom_ops:
-            # if defined both op maps, use custom_ops to overwrite.
-            fn = custom_ops[m_type]
-            if m_type not in types_collection and verbose:
-                print(f"[INFO] Customize rule {fn.__qualname__}() {m_type}.")
-        elif m_type in register_hooks:
-            fn = register_hooks[m_type]
-            if m_type not in types_collection and verbose:
-                print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
-        else:
-            if m_type not in types_collection and report_missing:
-                prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
-
+        fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
         if fn is not None:
 
             def counter(m, x, y, fn=fn):
@@ -213,11 +207,10 @@ def profile(
         total_ops = float(module.total_ops)
         ret_dict = {}
         for n, m in module.named_children():
-            next_dict = {}
-            if m in handler_collection and not isinstance(m, (nn.Sequential, nn.ModuleList)):
-                m_ops = float(m.total_ops)
-            else:
-                m_ops, next_dict = dfs_count(m, prefix=prefix + "\t")
+            # every child is walked, whether or not it carries a rule of its own: a rule accounts for its
+            # module's own arithmetic, not for its subtree's, so the two are added rather than one replacing
+            # the other. This is what the root of the traversal has always done with its own total_ops above
+            m_ops, next_dict = dfs_count(m, prefix=prefix + "\t")
             if ret_layer_info:  # the per-layer tree is the caller's opt-in, so it is not built when discarded
                 ret_dict[n] = (m_ops, float(calculate_parameters(m.parameters())), next_dict)
             if m in counted:  # a module reached through several parents already accumulated all of its calls

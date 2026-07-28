@@ -63,7 +63,7 @@ Calls that omit `stride` retain the exact profiling behavior shown in the basic 
 
 ### Define Custom Rules for Third-Party Modules
 
-Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`. Parameters need no hook — they are read from the module tree.
+Map an unsupported module type to a forward-hook function. The hook receives the module, its inputs, and its output, then adds the operation count to `module.total_ops`. Parameters need no hook — they are read from the module tree. A rule covers subclasses of the type it is registered for, the nearest registered ancestor winning, so an entry for `nn.Conv2d` also counts an `nn.Conv2d` subclass. A subclass whose forward computes something different needs its own entry, or it is counted as its base.
 
 ```python
 import torch
