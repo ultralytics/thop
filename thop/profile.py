@@ -113,7 +113,7 @@ def _restore_modes(prev_training):
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
-    handler_collection = {}  # every module this call buffered, against its hook where a rule gave it one
+    handler_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -121,9 +121,6 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         verbose = True
 
     def add_hooks(m):
-        # model.apply revisits a module held by two distinct parents, and buffering it twice registers the rule
-        # twice, so both hooks fire on the one forward pass and its work lands in the total twice. profile() has
-        # deduplicated on the same collection since #140; children() already dedups two names on one parent
         if list(m.children()) or m in handler_collection:
             return
 
@@ -132,8 +129,6 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
                 f".total_ops is already defined in {m!s}. Be careful, it might change your code's behavior."
             )
 
-        # resolved before any state goes on the module, so that nothing which can raise sits between installing
-        # the buffer and recording the module the teardown takes it off again
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
@@ -143,8 +138,6 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             handler_collection[m] = m.register_forward_hook(fn)
         types_collection.add(m_type)
 
-    # every module's own flag, not just the root's: model.eval() below recurses, so restoring the root alone
-    # flattens a deliberately mixed tree, e.g. the frozen BatchNorm under a training parent that fine-tuning uses
     prev_training = {m: m.training for m in model.modules()}
 
     try:
@@ -155,7 +148,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             model(*inputs)
 
         total_ops = 0
-        for m in handler_collection:  # the leaves this call buffered, not whatever tree the forward pass left
+        for m in handler_collection:
             total_ops += m.total_ops
 
         total_ops = total_ops.item()
@@ -163,9 +156,6 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
     finally:  # no failure, at any stage, may leave behind the hooks or the buffers this call created
         for handler in filter(None, handler_collection.values()):
             handler.remove()
-        # over what add_hooks recorded rather than over the tree as it now stands: a forward pass is free to
-        # replace or detach a submodule, and re-walking finds the replacement, which was never buffered, while
-        # missing the object that was — leaving a float64 total_ops in the state_dict of a module the caller holds
         for m in handler_collection:
             m._buffers.pop("total_ops", None)
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
@@ -196,8 +186,6 @@ def profile(
         if m in handler_collection:  # model.apply() revisits modules shared by several parents, e.g. a common act
             return
 
-        # resolved before any state goes on the module, so that nothing which can raise sits between installing
-        # the attribute and recording the module the teardown takes it off again
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
@@ -220,10 +208,7 @@ def profile(
 
     def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
         """Recursively counts the total operations of the given PyTorch module and its submodules."""
-        # float() rather than a bare read: a custom_ops rule may accumulate with a tensor, as the accumulator
-        # in tests/test_custom_ops.py does, and callers are owed plain Python numbers. Read out of __dict__
-        # because a module the forward pass put in the tree was never hooked and so carries no attribute at
-        # all: it contributed none of the traced work, which is what a missing entry means here
+        # A custom rule may accumulate a tensor, and a module added during the forward has no temporary attribute.
         total_ops = float(module.__dict__.get("total_ops", 0))
         ret_dict = {}
         for n, m in module.named_children():
@@ -304,7 +289,7 @@ def profile(
     finally:  # no failure, at any stage, may leave behind hooks or temporary attributes
         for handler in filter(None, handler_collection.values()):
             handler.remove()
-        for m in handler_collection:  # what add_hooks recorded, for the reason spelled out in profile_origin
+        for m in handler_collection:
             m.__dict__.pop("total_ops", None)
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
