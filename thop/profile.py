@@ -46,6 +46,7 @@ register_hooks = {
     # from BatchNorm2d, so its concrete counterpart is a sibling and never appears in its MRO.
     nn.modules.batchnorm._NormBase: count_normalization,
     nn.LayerNorm: count_normalization,
+    nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
     nn.Softmax: count_softmax,
     nn.ReLU: zero_ops,
@@ -76,6 +77,9 @@ register_hooks = {
     nn.Sequential: zero_ops,
     nn.PixelShuffle: zero_ops,
 }
+
+if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one count_normalization already reads
+    register_hooks[nn.RMSNorm] = count_normalization
 
 
 def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing):
