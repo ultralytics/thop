@@ -49,7 +49,7 @@ ruff format --line-length 120 .
 npx prettier --write --print-width 120 "**/*.{yml,yaml,json,md}"
 ```
 
-- There is no test or coverage CI: the only workflows are `format.yml` (autoformat + AI labels/summaries on PRs), `cla.yml` (CLA signing), and `publish.yml` (PyPI release) — run tests locally before pushing.
+- `ci.yml` runs `tests/` on every pull request, on pushes to `main`, and nightly, at the `requires-python` floor (Python 3.8 with torch 1.8.0) and at the ceiling (3.14, latest torch) — run them locally before pushing all the same. Coverage is not measured, and `publish.yml` (PyPI release) is gated on the version bump alone, so a release does not imply a green suite; the other workflows are `format.yml` (autoformat + AI labels/summaries on PRs) and `cla.yml` (CLA signing).
 - `requires-python = ">=3.8"` in pyproject.toml; classifiers cover Python 3.8–3.14. The `--target-version py39` above intentionally matches CI (ultralytics/actions uses py39 for pyupgrade), so don't accept pyupgrade fixes that would break Python 3.8 syntax support.
 
 ## Architecture
