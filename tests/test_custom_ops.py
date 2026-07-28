@@ -64,3 +64,14 @@ class TestUtils:
         macs, params = profile(net, inputs=(torch.randn(1, 3, 32, 32),), verbose=False)
         assert type(macs) is float, f"expected float, got {type(macs).__name__}"
         assert type(params) is float, f"expected float, got {type(params).__name__}"
+
+    def test_stride_estimate_matches_target_profile(self):
+        """Stride-aligned profiling must fit both spatial and fixed operation costs."""
+        net = nn.Sequential(
+            nn.Conv2d(3, 4, 3, padding=1, bias=False),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(4, 2, bias=False),
+        )
+        inputs = (torch.randn(1, 3, 160, 160),)
+        assert profile(net, inputs=inputs, stride=32, verbose=False) == profile(net, inputs=inputs, verbose=False)
