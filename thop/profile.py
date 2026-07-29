@@ -1,5 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import inspect
+
 from thop.rnn_hooks import (
     count_gru,
     count_gru_cell,
@@ -28,6 +30,9 @@ from .utils import prRed
 from .vision.calc_func import calculate_parameters
 
 default_dtype = torch.float64
+
+# torch>=2.0
+_HOOK_TAKES_KWARGS = "with_kwargs" in inspect.signature(nn.Module.register_forward_hook).parameters
 
 register_hooks = {
     # the padding and dropout families through the private base each shares, as the norm families below
@@ -129,6 +134,41 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
+def _register_counter(m, fn, keep_result):
+    """Register a counting hook that receives positional and keyword arguments."""
+    if _HOOK_TAKES_KWARGS:
+
+        def counter(m, args, kwargs, y, fn=fn):
+            """Apply the counting rule to the arguments the module was called with."""
+            result = fn(m, _positional(m, args, kwargs) if kwargs else args, y)
+            return result if keep_result else None
+
+        return m.register_forward_hook(counter, with_kwargs=True)
+
+    def counter(m, args, y, fn=fn):
+        """Apply the counting rule; this torch delivers no keyword arguments for it to be given."""
+        result = fn(m, args, y)
+        return result if keep_result else None
+
+    return m.register_forward_hook(counter)
+
+
+def _positional(m, args, kwargs):
+    """Return supplied arguments in the order m.forward declares them."""
+    try:
+        bound = inspect.signature(m.forward).bind(*args, **kwargs)
+    except (TypeError, ValueError):
+        return ()
+    values = []
+    for name, value in bound.arguments.items():
+        kind = bound.signature.parameters[name].kind
+        if kind == inspect.Parameter.VAR_POSITIONAL:
+            values.extend(value)
+        elif kind != inspect.Parameter.VAR_KEYWORD:
+            values.append(value)
+    return tuple(values)
+
+
 def _parents_first(roots):
     """List reachable modules with every parent before its children."""
     order, seen = [], set()
@@ -193,7 +233,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             m._non_persistent_buffers_set.add("total_ops")
         handler_collection[m] = None
         if fn is not None and fn is not zero_ops:
-            handler_collection[m] = m.register_forward_hook(fn)
+            handler_collection[m] = _register_counter(m, fn, keep_result=True)  # as profile_origin always has
         types_collection.add(m_type)
 
     prev_training = {m: m.training for m in model.modules()}
@@ -260,12 +300,7 @@ def profile(
 
         handler_collection[m] = None
         if fn is not None and fn is not zero_ops:
-
-            def counter(m, x, y, fn=fn):
-                """Apply the counting rule without allowing its return value to replace the module output."""
-                fn(m, x, y)
-
-            handler_collection[m] = m.register_forward_hook(counter)
+            handler_collection[m] = _register_counter(m, fn, keep_result=False)  # never the module output
         types_collection.add(m_type)
 
     counted = set()
