@@ -170,6 +170,11 @@ def count_linear(m, x, y):
     m.total_ops += calculate_linear(total_mul, num_elements)
 
 
+def count_bilinear(m, x, y):
+    """Count both contractions of each bilinear output."""
+    m.total_ops += calculate_linear((m.in1_features + 1) * m.in2_features, y.numel())
+
+
 def count_multihead_attention(m: nn.MultiheadAttention, x, y):
     """Count projections, attention matrix products, and softmax.
 

@@ -14,6 +14,7 @@ from thop.rnn_hooks import (
 from thop.vision.basic_hooks import (
     count_adap_avgpool,
     count_avgpool,
+    count_bilinear,
     count_convNd,
     count_convtNd,
     count_linear,
@@ -79,6 +80,7 @@ register_hooks = {
     nn.AdaptiveAvgPool2d: count_adap_avgpool,
     nn.AdaptiveAvgPool3d: count_adap_avgpool,
     nn.Linear: count_linear,
+    nn.Bilinear: count_bilinear,
     nn.MultiheadAttention: count_multihead_attention,
     nn.Upsample: count_upsample,
     nn.UpsamplingBilinear2d: count_upsample,
