@@ -108,8 +108,12 @@ def count_softmax(m, x, y):
     batch_size = x.numel() // nfeatures if nfeatures else 0
 
     m.total_ops += calculate_softmax(batch_size, nfeatures)
-    if isinstance(m, nn.Softmin):  # torch runs it as (-x).softmax(dim), and that negation is one op per element
+    # what each variant costs on top of the plain softmax. Both terms are worth writing because calculate_softmax
+    # charges nfeatures - 1 additions rather than nfeatures, so it is already exact to within one op per vector
+    if isinstance(m, nn.Softmin):  # torch runs it as (-x).softmax(dim), one negation per element
         m.total_ops += x.numel()
+    elif isinstance(m, nn.LogSoftmax):  # torch runs it as x - logsumexp(x), one logarithm per normalized vector
+        m.total_ops += batch_size
 
 
 def count_avgpool(m, x, y):
