@@ -33,6 +33,11 @@ from .vision.calc_func import calculate_parameters
 
 default_dtype = torch.float64
 
+try:
+    from torch.utils._python_dispatch import TorchDispatchMode
+except ImportError:  # torch 1.x
+    TorchDispatchMode = None
+
 # torch>=2.0
 _HOOK_TAKES_KWARGS = "with_kwargs" in inspect.signature(nn.Module.register_forward_hook).parameters
 
@@ -114,6 +119,91 @@ if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one
 
 if hasattr(nn.modules.padding, "_CircularPadNd"):  # torch>=2.1, which is where the CircularPad classes start
     register_hooks[nn.modules.padding._CircularPadNd] = zero_ops
+
+
+if TorchDispatchMode is not None:
+
+    class _FunctionalAttentionCounter(TorchDispatchMode):
+        """Count batched products hidden inside functional attention implementations."""
+
+        sdpa_ops = {
+            "_scaled_dot_product_attention_math",
+            "_scaled_dot_product_cudnn_attention",
+            "_scaled_dot_product_efficient_attention",
+            "_scaled_dot_product_flash_attention",
+            "_scaled_dot_product_flash_attention_for_cpu",
+        }
+
+        def __init__(self):
+            """Initialize the operation total and suppression depth."""
+            super().__init__()
+            self.reset()
+
+        def reset(self):
+            """Reset the operation total before a forward pass."""
+            self.total_ops = 0
+            self.suppressed = 0
+
+        def suppress(self, *args):
+            """Suppress functional products owned by a module counting rule."""
+            self.suppressed += 1
+
+        def resume(self, *args):
+            """Resume functional product counting after an owning module returns."""
+            self.suppressed -= 1
+
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            """Execute an operator and count its attention matrix products."""
+            result = func(*args, **(kwargs or {}))
+            if self.suppressed:
+                return result
+
+            name = getattr(getattr(func, "_overloadpacket", func), "__name__", "")
+            if name == "bmm":
+                left, right = args[:2]
+                self.total_ops += left.shape[0] * left.shape[1] * left.shape[2] * right.shape[2]
+            elif name in self.sdpa_ops:
+                query, key, value = args[:3]
+                batch = 1
+                for dimension in query.shape[:-3]:
+                    batch *= dimension
+                self.total_ops += (
+                    batch * query.shape[-3] * query.shape[-2] * key.shape[-2] * (query.shape[-1] + value.shape[-1])
+                )
+            return result
+
+else:
+
+    class _FunctionalAttentionCounter:
+        """No-op functional attention counter for torch versions without dispatch modes."""
+
+        def reset(self):
+            """Reset the operation total before a forward pass."""
+            self.total_ops = 0
+
+        def suppress(self, *args):
+            """Accept the suppression hook used by newer torch versions."""
+
+        def resume(self, *args):
+            """Accept the resume hook used by newer torch versions."""
+
+        def __enter__(self):
+            """Enter the no-op context."""
+            return self
+
+        def __exit__(self, *args):
+            """Exit the no-op context."""
+
+
+def _attention_suppression_hooks(model, counter, custom_ops):
+    """Suppress functional products already owned by nn.MultiheadAttention or a custom rule."""
+    handles = []
+    for module in model.modules():
+        if isinstance(module, nn.MultiheadAttention) or any(t in custom_ops for t in type(module).__mro__):
+            handles.extend(
+                (module.register_forward_pre_hook(counter.suppress), module.register_forward_hook(counter.resume))
+            )
+    return handles
 
 
 def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing):
@@ -216,8 +306,10 @@ def _restore_modes(prev_training):
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = {}
+    suppression_handlers = []
     displaced_collection = {}
     types_collection = set()
+    functional_counter = _FunctionalAttentionCounter()
     if custom_ops is None:
         custom_ops = {}
     if report_missing:
@@ -247,11 +339,13 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
     try:
         model.eval()
         model.apply(add_hooks)
+        suppression_handlers = _attention_suppression_hooks(model, functional_counter, custom_ops)
 
-        with torch.no_grad():
+        functional_counter.reset()
+        with torch.no_grad(), functional_counter:
             model(*inputs)
 
-        total_ops = 0
+        total_ops = functional_counter.total_ops
         for m in handler_collection:
             total_ops += m.total_ops
 
@@ -259,6 +353,8 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind the hooks or the buffers this call created
         for handler in filter(None, handler_collection.values()):
+            handler.remove()
+        for handler in suppression_handlers:
             handler.remove()
         for m in handler_collection:
             m._buffers.pop("total_ops", None)
@@ -281,8 +377,10 @@ def profile(
 ):
     """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs."""
     handler_collection = {}
+    suppression_handlers = []
     displaced_collection = {}
     types_collection = set()
+    functional_counter = _FunctionalAttentionCounter()
     if custom_ops is None:
         custom_ops = {}
     if report_missing:
@@ -334,16 +432,20 @@ def profile(
     try:
         model.eval()
         model.apply(add_hooks)
+        suppression_handlers = _attention_suppression_hooks(model, functional_counter, custom_ops)
 
         def run(input_values):
             """Profile one set of inputs while reusing the registered hooks."""
             counted.clear()
             for m in handler_collection:
                 m.__dict__["total_ops"] = 0
-            with torch.no_grad():
+            functional_counter.reset()
+            with torch.no_grad(), functional_counter:
                 model(*input_values)
             # Count the executed hook record; build the surviving tree only when requested.
-            total = sum(float(m.__dict__.get("total_ops", 0)) for m in handler_collection)
+            total = functional_counter.total_ops + sum(
+                float(m.__dict__.get("total_ops", 0)) for m in handler_collection
+            )
             return total, dfs_count(model)[1] if ret_layer_info else {}
 
         if stride is None or ret_layer_info:
@@ -378,6 +480,9 @@ def profile(
                 try:
                     for width in (stride[1], stride[1] * 2)[:required_samples]:
                         ops, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
+                        if functional_counter.total_ops:
+                            samples.clear()
+                            break
                         samples.append((stride[0] * width, ops))
                 except Exception:
                     samples.clear()
@@ -398,6 +503,8 @@ def profile(
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind hooks or temporary attributes
         for handler in filter(None, handler_collection.values()):
+            handler.remove()
+        for handler in suppression_handlers:
             handler.remove()
         for m in handler_collection:
             m.__dict__.pop("total_ops", None)
