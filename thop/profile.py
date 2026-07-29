@@ -91,13 +91,13 @@ register_hooks = {
     nn.RNN: count_rnn,
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
-    # containers hold children and compute nothing themselves; they share no base but nn.Module
+    # containers hold children and compute nothing themselves; they share no base but nn.Module.
+    # nn.Container is left out: it is deprecated into a plain nn.Module, so a subclass of it computes.
     nn.Sequential: zero_ops,
     nn.ModuleList: zero_ops,
     nn.ModuleDict: zero_ops,
     nn.ParameterList: zero_ops,
     nn.ParameterDict: zero_ops,
-    nn.Container: zero_ops,
     # layers that only move elements around: a view, a re-index or a permutation reads and writes each
     # element once and multiplies nothing. The elementwise activations that also reach no rule are left
     # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
