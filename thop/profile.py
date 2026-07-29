@@ -111,27 +111,32 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
-def _register_counter(m, fn):
+def _register_counter(m, fn, keep_result):
     """Register fn as m's forward hook, handing it the arguments m was called with as one positional tuple.
 
-    A counting rule reads its input as x[0], so a module called entirely by keyword — legal, and how a forward naming
-    its parameter "input" invites being called — would otherwise hand the rule an empty tuple and fail after the forward
-    pass had already run. Only that case is rewritten: a call with any positional argument reaches the rule exactly as
-    it always has, because what x holds for it is the documented contract custom_ops is written
-    against. torch<2.0 cannot deliver keyword arguments to a hook at all, so there the rewrite has nothing to work
-    from and the rule sees what it always saw.
+    A counting rule reads its input as x[0], so a module called entirely by keyword — legal, and what a forward naming
+    its parameter "input" invites — would otherwise hand the rule an empty tuple and fail after the forward pass had
+    already run. Only that case is rewritten: a call with any positional argument reaches the rule exactly as it always
+    has, because what x holds for it is the contract custom_ops is written against. torch<2.0 delivers no keyword
+    arguments to a hook, so there the rewrite has nothing to work from and the rule sees what it always saw.
+
+    keep_result says what torch does with whatever the rule returns, which is the one thing the two entry points have
+    never agreed on: a forward hook may replace its module's output, profile() has always refused to let a rule do so,
+    and profile_origin() has always allowed it. Each keeps its own answer, since nothing here is about return values.
     """
     if _HOOK_TAKES_KWARGS:
 
         def counter(m, args, kwargs, y, fn=fn):
-            """Apply the counting rule without allowing its return value to replace the module output."""
-            fn(m, _positional(m, kwargs) if kwargs and not args else args, y)
+            """Apply the counting rule to the arguments the module was called with."""
+            result = fn(m, _positional(m, kwargs) if kwargs and not args else args, y)
+            return result if keep_result else None
 
         return m.register_forward_hook(counter, with_kwargs=True)
 
     def counter(m, args, y, fn=fn):
-        """Apply the counting rule without allowing its return value to replace the module output."""
-        fn(m, args, y)
+        """Apply the counting rule; this torch delivers no keyword arguments for it to be given."""
+        result = fn(m, args, y)
+        return result if keep_result else None
 
     return m.register_forward_hook(counter)
 
@@ -186,7 +191,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
         handler_collection[m] = None
         if fn is not None:
-            handler_collection[m] = _register_counter(m, fn)
+            handler_collection[m] = _register_counter(m, fn, keep_result=True)  # as profile_origin always has
         types_collection.add(m_type)
 
     prev_training = {m: m.training for m in model.modules()}
@@ -247,7 +252,7 @@ def profile(
 
         handler_collection[m] = None
         if fn is not None:
-            handler_collection[m] = _register_counter(m, fn)
+            handler_collection[m] = _register_counter(m, fn, keep_result=False)  # never the module output
         types_collection.add(m_type)
 
     counted = set()
