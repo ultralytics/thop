@@ -114,9 +114,7 @@ def count_avgpool(m, x, y):
     windows = 1
     for size, output, k, s, p in zip(x[0].shape[-dims:], y.shape[-dims:], kernel, stride, padding):
         lower, upper = (-p, size + p) if m.count_include_pad else (0, size)
-        windows *= sum(
-            max(min(i * s - p + k, upper) - max(i * s - p, lower), 0) for i in range(output)
-        )
+        windows *= sum(max(min(i * s - p + k, upper) - max(i * s - p, lower), 0) for i in range(output))
     m.total_ops += l_prod(x[0].shape[:-dims]) * windows + y.numel()  # one add per input, one divide per output
 
 
