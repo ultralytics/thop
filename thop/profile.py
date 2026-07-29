@@ -107,12 +107,7 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
 
 def _parents_first(roots):
-    """List every module reachable from roots, each after every module whose train() recurses into it.
-
-    Every recorded module is a root of the walk, not just the model: one the forward pass detached is unreachable from
-    the model and is still a module train() gets called on. Reverse postorder rather than a plain descent, because a
-    module held by two parents has to follow both of them however they were reached.
-    """
+    """List reachable modules with every parent before its children."""
     order, seen = [], set()
 
     def visit(m):
@@ -130,13 +125,7 @@ def _parents_first(roots):
 
 
 def _restore_modes(prev_training):
-    """Restore the training mode of every module this call recorded, and of no other.
-
-    The walk is over the tree as it stands after the forward pass, since that is the one train() recurses over. A module
-    the forward pass attached was never recorded and its mode is its creator's to choose, so its own mode stands in for
-    the snapshot it has none of; a parent going back first means every such module is written once, by itself, after
-    everything that could reach it.
-    """
+    """Restore recorded modes without changing modules attached during forward."""
     order = _parents_first(prev_training)
     modes = {m: prev_training.get(m, m.training) for m in order}  # read before the first train() call moves any
     for m, was_training in modes.items():
@@ -242,14 +231,7 @@ def profile(
     counted = set()
 
     def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
-        """Recursively count the operations of a module and its submodules, for the per-layer report.
-
-        This walks the tree the forward pass left behind, so a module it replaced or detached is missing from it. The
-        total the call returns is read off the hook record instead and can therefore exceed this sum; the parameter
-        counts beside it come from the same surviving tree, as the ones the call returns do.
-        """
-        # only a counter this call installed is read, so a module the forward pass attached carrying an attribute of
-        # that name contributes its own bookkeeping to nothing. A custom rule may accumulate a tensor, hence float().
+        """Build layer details from the module tree left after forward."""
         total_ops = float(module.__dict__.get("total_ops", 0)) if module in handler_collection else 0.0
         ret_dict = {}
         for n, m in module.named_children():
@@ -279,9 +261,7 @@ def profile(
                 m.__dict__["total_ops"] = 0
             with torch.no_grad():
                 model(*input_values)
-            # the record rather than the tree: a module the forward pass replaced or detached still did the work its
-            # hook counted, and profile_origin has always reported it. dfs_count answers for the tree the caller is
-            # left with, which is what the per-layer report describes, so it runs only when that report is asked for
+            # Count the executed hook record; build the surviving tree only when requested.
             total = sum(float(m.__dict__.get("total_ops", 0)) for m in handler_collection)
             return total, dfs_count(model)[1] if ret_layer_info else {}
 
