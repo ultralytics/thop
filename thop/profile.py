@@ -129,6 +129,24 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
+def _parents_first(roots):
+    """List reachable modules with every parent before its children."""
+    order, seen = [], set()
+
+    def visit(m):
+        seen.add(m)
+        for c in m.children():
+            if c not in seen:
+                visit(c)
+        order.append(m)
+
+    for root in roots:
+        if root not in seen:
+            visit(root)
+    order.reverse()
+    return order
+
+
 def _displace_total_ops(m):
     """Temporarily remove a caller-owned `total_ops` attribute or buffer."""
     displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
@@ -139,11 +157,13 @@ def _displace_total_ops(m):
 
 
 def _restore_modes(prev_training):
-    """Restore each module's training mode."""
-    for m, was_training in prev_training.items():
+    """Restore recorded modes without changing modules attached during forward."""
+    order = _parents_first(prev_training)
+    modes = {m: prev_training.get(m, m.training) for m in order}  # read before the first train() call moves any
+    for m, was_training in modes.items():
         if m.training != was_training:
             m.train(was_training)
-    for m, was_training in prev_training.items():
+    for m, was_training in modes.items():
         m.training = was_training
 
 
@@ -251,9 +271,8 @@ def profile(
     counted = set()
 
     def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
-        """Recursively counts the total operations of the given PyTorch module and its submodules."""
-        # A custom rule may accumulate a tensor, and a module added during the forward has no temporary attribute.
-        total_ops = float(module.__dict__.get("total_ops", 0))
+        """Build layer details from the module tree left after forward."""
+        total_ops = float(module.__dict__.get("total_ops", 0)) if module in handler_collection else 0.0
         ret_dict = {}
         for n, m in module.named_children():
             # every child is walked, whether or not it carries a rule of its own: a rule accounts for its
@@ -282,7 +301,9 @@ def profile(
                 m.__dict__["total_ops"] = 0
             with torch.no_grad():
                 model(*input_values)
-            return dfs_count(model)
+            # Count the executed hook record; build the surviving tree only when requested.
+            total = sum(float(m.__dict__.get("total_ops", 0)) for m in handler_collection)
+            return total, dfs_count(model)[1] if ret_layer_info else {}
 
         if stride is None or ret_layer_info:
             total_ops, ret_dict = run(inputs)
