@@ -73,6 +73,7 @@ register_hooks = {
     nn.AdaptiveMaxPool3d: zero_ops,
     nn.FractionalMaxPool2d: zero_ops,  # a max pool that picks its windows randomly still only selects
     nn.FractionalMaxPool3d: zero_ops,
+    nn.modules.pooling._MaxUnpoolNd: zero_ops,  # scattering into a larger zero tensor adds nothing
     nn.AvgPool1d: count_avgpool,
     nn.AvgPool2d: count_avgpool,
     nn.AvgPool3d: count_avgpool,
@@ -90,7 +91,13 @@ register_hooks = {
     nn.RNN: count_rnn,
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
+    # containers hold children and compute nothing themselves; they share no base but nn.Module
     nn.Sequential: zero_ops,
+    nn.ModuleList: zero_ops,
+    nn.ModuleDict: zero_ops,
+    nn.ParameterList: zero_ops,
+    nn.ParameterDict: zero_ops,
+    nn.Container: zero_ops,
     # layers that only move elements around: a view, a re-index or a permutation reads and writes each
     # element once and multiplies nothing. The elementwise activations that also reach no rule are left
     # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
