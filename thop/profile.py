@@ -107,18 +107,7 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
 
 def _displace_total_ops(m):
-    """Take whatever the caller already keeps under `total_ops` out of the counter's way, and report it back.
-
-    The name stays public because it is the documented one a custom_ops rule writes to, so a private counter would route
-    every user-written rule into an attribute nothing reads and report zero without an error. That leaves the profiler
-    occupying a name on someone else's module, which the module may already be using. nn.Module.__setattr__ refuses an
-    int for a name it finds in _buffers, which turned every rule's `m.total_ops += ...` into a TypeError; a plain
-    attribute of that name was overwritten and then removed by the teardown, leaving no trace that it had been there.
-
-    Only the two stores the profiler can vacate without changing what it measures are moved. A parameter of that name
-    feeds calculate_parameters(model.parameters()) and a child module of it feeds the traversal that sums a subtree, so
-    hiding either would answer with a smaller number instead of an error.
-    """
+    """Temporarily remove a caller-owned `total_ops` attribute or buffer."""
     displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
     if displaced:  # record first, remove second: nothing may run between taking the value and owning a copy
         logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
@@ -153,7 +142,8 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
-        displaced_collection[m] = _displace_total_ops(m)
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
         # register_buffer discards the name from _non_persistent_buffers_set, which is not one of the stores
         # displaced above, so a buffer the caller deliberately kept out of its state_dict would come back inside
         # it and fail a strict load. The membership goes back by hand rather than through persistent=, which a
@@ -222,7 +212,8 @@ def profile(
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
-        displaced_collection[m] = _displace_total_ops(m)
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
         # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
