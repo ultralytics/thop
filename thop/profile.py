@@ -106,6 +106,15 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
+def _displace_total_ops(m):
+    """Temporarily remove a caller-owned `total_ops` attribute or buffer."""
+    displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
+    logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
+    for store, _ in displaced:
+        del store["total_ops"]
+    return displaced
+
+
 def _restore_modes(prev_training):
     """Restore each module's training mode."""
     for m, was_training in prev_training.items():
@@ -118,6 +127,7 @@ def _restore_modes(prev_training):
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = {}
+    displaced_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -128,15 +138,16 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         if list(m.children()) or m in handler_collection:
             return
 
-        if hasattr(m, "total_ops"):
-            logging.warning(
-                f".total_ops is already defined in {m!s}. Be careful, it might change your code's behavior."
-            )
-
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
+        # register_buffer discards this flag; restore it without requiring the newer persistent= argument.
+        non_persistent = "total_ops" in m._non_persistent_buffers_set
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
+        if non_persistent:
+            m._non_persistent_buffers_set.add("total_ops")
         handler_collection[m] = None
         if fn is not None:
             handler_collection[m] = m.register_forward_hook(fn)
@@ -162,6 +173,9 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             handler.remove()
         for m in handler_collection:
             m._buffers.pop("total_ops", None)
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
+                store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     return total_ops, total_params
@@ -178,6 +192,7 @@ def profile(
 ):
     """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs."""
     handler_collection = {}
+    displaced_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -193,6 +208,8 @@ def profile(
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
         # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
@@ -295,6 +312,9 @@ def profile(
             handler.remove()
         for m in handler_collection:
             m.__dict__.pop("total_ops", None)
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
+                store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     if ret_layer_info:
