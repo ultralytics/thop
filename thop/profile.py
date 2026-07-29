@@ -117,12 +117,12 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
         if t in custom_ops:  # if defined in both op maps, custom_ops overwrites
             fn = custom_ops[t]
             if first_seen and verbose:
-                print(f"[INFO] Customize rule {fn.__qualname__}() {m_type}.")
+                print(f"[INFO] Customize rule {getattr(fn, '__qualname__', fn)}() {m_type}.")
             return fn
         if t in register_hooks:
             fn = register_hooks[t]
             if first_seen and verbose:
-                print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
+                print(f"[INFO] Register {getattr(fn, '__qualname__', fn)}() for {m_type}.")
             return fn
     if first_seen and report_missing:
         prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
