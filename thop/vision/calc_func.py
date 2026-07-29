@@ -27,15 +27,11 @@ def calculate_zero_ops():
 def calculate_conv2d_flops(
     input_size: list, output_size: list, kernel_size: list, groups: int, bias: bool = False, transpose: bool = False
 ):
-    """Calculate FLOPs for a Conv2D layer using input/output sizes, kernel size, groups, and the bias flag."""
-    # n, in_c, ih, iw = input_size
-    # out_c, in_c, kh, kw = kernel_size
-    if transpose:
-        out_c = output_size[1]
-        return l_prod(input_size) * (out_c // groups) * l_prod(kernel_size[2:])
-    else:
-        in_c = input_size[1]
-        return l_prod(output_size) * (in_c // groups) * l_prod(kernel_size[2:])
+    """Calculate FLOPs for a ConvNd layer using input/output sizes, kernel size, groups, and the bias flag."""
+    # A transpose scatters rather than gathers, so it walks the input and takes its channel from the output.
+    volume, channels = (input_size, output_size) if transpose else (output_size, input_size)
+    # The channel axis is counted from the trailing end, so unbatched input lands on it too.
+    return l_prod(volume) * (channels[-(len(kernel_size) - 1)] // groups) * l_prod(kernel_size[2:])
 
 
 def calculate_norm(input_size):
@@ -46,15 +42,10 @@ def calculate_norm(input_size):
 def calculate_softmax(batch_size, nfeatures):
     """Compute FLOPs for a softmax activation given batch size and feature count."""
     total_exp = nfeatures
-    total_add = nfeatures - 1
+    total_add = max(nfeatures - 1, 0)  # normalizing an empty axis costs nothing, rather than one negative addition
     total_div = nfeatures
     total_ops = batch_size * (total_exp + total_add + total_div)
     return int(total_ops)
-
-
-def calculate_avgpool(input_size):
-    """Calculate the average pooling size for a given input tensor."""
-    return int(input_size)
 
 
 def calculate_linear(in_feature, num_elements):

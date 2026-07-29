@@ -7,7 +7,6 @@ from torch import nn
 from torch.nn.modules.conv import _ConvNd
 
 from thop.vision.calc_func import (
-    calculate_avgpool,
     calculate_conv2d_flops,
     calculate_linear,
     calculate_norm,
@@ -93,23 +92,36 @@ def count_prelu(m, x, y):
 def count_softmax(m, x, y):
     """Calculate and update the total operation counts for a Softmax layer in a PyTorch model."""
     x = x[0]
-    # nn.Softmax(dim=None) is deprecated but still legal and still runs, resolving the dimension itself, so the
-    # count follows the same rule rather than raising: dimension 0 for 0-, 1- and 3-dimensional input, 1 otherwise
-    dim = m.dim if m.dim is not None else 0 if x.dim() in {0, 1, 3} else 1
+    # Softmax2d always normalizes channels, with or without a batch dimension.
+    dim = -3 if isinstance(m, nn.Softmax2d) else m.dim
+    if dim is None:
+        # Match torch's deprecated implicit dimension.
+        dim = 0 if x.dim() in {0, 1, 3} else 1
     # a scalar normalizes over itself, which no shape entry can say: torch returns 1.0 for it, so the cost is
     # the one exponential and the one division that produce that, and indexing the empty shape only raises
     nfeatures = x.size()[dim] if x.dim() else 1
-    batch_size = x.numel() // nfeatures
+    batch_size = x.numel() // nfeatures if nfeatures else 0
 
     m.total_ops += calculate_softmax(batch_size, nfeatures)
+    if isinstance(m, nn.Softmin):
+        m.total_ops += x.numel()
+    elif isinstance(m, nn.LogSoftmax):
+        m.total_ops += batch_size
 
 
 def count_avgpool(m, x, y):
-    """Calculate and update the total number of operations (FLOPs) for an AvgPool layer based on the output elements."""
-    # total_div = 1
-    # kernel_ops = total_add + total_div
-    num_elements = y.numel()
-    m.total_ops += calculate_avgpool(num_elements)
+    """Calculate and update the total operation count for an AvgPool layer."""
+    kernel = m.kernel_size
+    if isinstance(kernel, int):  # only AvgPool2d and AvgPool3d keep it as passed, AvgPool1d normalizes to a tuple
+        kernel = (kernel,) * (3 if isinstance(m, nn.AvgPool3d) else 2)
+    dims = len(kernel)
+    stride = (m.stride,) * dims if isinstance(m.stride, int) else m.stride
+    padding = (m.padding,) * dims if isinstance(m.padding, int) else m.padding
+    windows = 1
+    for size, output, k, s, p in zip(x[0].shape[-dims:], y.shape[-dims:], kernel, stride, padding):
+        lower, upper = (-p, size + p) if m.count_include_pad else (0, size)
+        windows *= sum(max(min(i * s - p + k, upper) - max(i * s - p, lower), 0) for i in range(output))
+    m.total_ops += l_prod(x[0].shape[:-dims]) * windows + y.numel()  # one add per input, one divide per output
 
 
 def count_adap_avgpool(m, x, y):
@@ -117,12 +129,17 @@ def count_adap_avgpool(m, x, y):
     # the windows nn.AdaptiveAvgPool* actually slices, per dimension: output j spans
     # [j * I // O, ceil((j + 1) * I / O)), so their sizes are integral and unequal whenever O does not divide I.
     # The input-over-output ratio this replaced was a float, which made total_ops fractional, and it was also
-    # smaller than the window it stood for
-    windows = l_prod(
-        sum(-(-(j + 1) * i // o) - j * i // o for j in range(o)) for i, o in zip(x[0].shape[2:], y.shape[2:])
-    )
-    num_elements = y.numel()
-    m.total_ops += windows * (num_elements // l_prod(y.shape[2:])) + num_elements  # one add per input, one divide out
+    # smaller than the window it stood for.
+    # Every axis is walked, not only the pooled ones: an axis the layer leaves alone has one input per output, so
+    # it contributes its own length and the batch and channel counts fall out of the same product. That is what
+    # the pooled-axes slice had to multiply back by hand, and it needs no batch axis to be there to slice off.
+    m.total_ops += (
+        l_prod(
+            o if i == o else sum(-(-(j + 1) * i // o) - j * i // o for j in range(o))
+            for i, o in zip(x[0].shape, y.shape)
+        )
+        + y.numel()
+    )  # one add per pooled input, one divide per output
 
 
 # TODO: verify the accuracy
@@ -154,5 +171,29 @@ def count_linear(m, x, y):
 
 
 def count_bilinear(m, x, y):
-    """Count the pairwise input products for every output element."""
-    m.total_ops += calculate_linear(m.in1_features * m.in2_features, y.numel())
+    """Count both contractions of each bilinear output."""
+    m.total_ops += calculate_linear((m.in1_features + 1) * m.in2_features, y.numel())
+
+
+def count_multihead_attention(m: nn.MultiheadAttention, x, y):
+    """Count projections, attention matrix products, and softmax.
+
+    MultiheadAttention calls its projection weights functionally, so none of this work reaches a child-module hook.
+    Returned weights reveal appended key positions; calls that suppress them fall back to the key input.
+    """
+    out, weights = y if isinstance(y, tuple) else (y, None)
+    batch_first = getattr(m, "batch_first", False)  # added in torch 1.9; before it the layout is always (L, N, E)
+    tgt_len = out.shape[-2] if batch_first or out.dim() == 2 else out.shape[0]
+    batch_size = 1 if out.dim() == 2 else out.shape[0 if batch_first else 1]
+    appended = (m.bias_k is not None) + m.add_zero_attn  # each adds one key position, after the projections have run
+    if weights is not None:
+        attended = weights.shape[-1]
+    else:
+        key = x[1]
+        attended = (key.shape[-2] if batch_first or key.dim() == 2 else key.shape[0]) + appended
+
+    # Heads sum to embed_dim across both attention matrix products, so num_heads only multiplies the softmax rows.
+    projections = m.embed_dim * (2 * tgt_len * m.embed_dim + (attended - appended) * (m.kdim + m.vdim))
+    attention = 2 * tgt_len * attended * m.embed_dim
+    softmax = calculate_softmax(batch_size * m.num_heads * tgt_len, attended)
+    m.total_ops += batch_size * (projections + attention) + softmax

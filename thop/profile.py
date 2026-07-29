@@ -1,5 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import inspect
+
 from thop.rnn_hooks import (
     count_gru,
     count_gru_cell,
@@ -16,6 +18,7 @@ from thop.vision.basic_hooks import (
     count_convNd,
     count_convtNd,
     count_linear,
+    count_multihead_attention,
     count_normalization,
     count_prelu,
     count_softmax,
@@ -30,11 +33,16 @@ from .vision.calc_func import calculate_parameters
 
 default_dtype = torch.float64
 
+# torch>=2.0
+_HOOK_TAKES_KWARGS = "with_kwargs" in inspect.signature(nn.Module.register_forward_hook).parameters
+
 register_hooks = {
-    # the constant-padding and dropout families through the private base each shares, as the norm families
-    # below need for the same reason: naming the two concrete classes left their 10 siblings rule-less, so
+    # the padding and dropout families through the private base each shares, as the norm families below
+    # need for the same reason: naming the two concrete classes left their 10 siblings rule-less, so
     # report_missing warned about layers that have nothing to count and taught the reader to ignore it
     nn.modules.padding._ConstantPadNd: zero_ops,  # padding does not involve any multiplication
+    nn.modules.padding._ReflectionPadNd: zero_ops,
+    nn.modules.padding._ReplicationPadNd: zero_ops,
     nn.modules.dropout._DropoutNd: zero_ops,
     nn.Conv1d: count_convNd,
     nn.Conv2d: count_convNd,
@@ -49,7 +57,11 @@ register_hooks = {
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
+    # The softmax family shares no base, so each member is registered explicitly.
     nn.Softmax: count_softmax,
+    nn.LogSoftmax: count_softmax,
+    nn.Softmin: count_softmax,
+    nn.Softmax2d: count_softmax,
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
     nn.LeakyReLU: zero_ops,
@@ -59,6 +71,8 @@ register_hooks = {
     nn.AdaptiveMaxPool1d: zero_ops,
     nn.AdaptiveMaxPool2d: zero_ops,
     nn.AdaptiveMaxPool3d: zero_ops,
+    nn.FractionalMaxPool2d: zero_ops,  # a max pool that picks its windows randomly still only selects
+    nn.FractionalMaxPool3d: zero_ops,
     nn.AvgPool1d: count_avgpool,
     nn.AvgPool2d: count_avgpool,
     nn.AvgPool3d: count_avgpool,
@@ -67,6 +81,7 @@ register_hooks = {
     nn.AdaptiveAvgPool3d: count_adap_avgpool,
     nn.Linear: count_linear,
     nn.Bilinear: count_bilinear,
+    nn.MultiheadAttention: count_multihead_attention,
     nn.Upsample: count_upsample,
     nn.UpsamplingBilinear2d: count_upsample,
     nn.UpsamplingNearest2d: count_upsample,
@@ -77,11 +92,26 @@ register_hooks = {
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
     nn.Sequential: zero_ops,
+    # layers that only move elements around: a view, a re-index or a permutation reads and writes each
+    # element once and multiplies nothing. The elementwise activations that also reach no rule are left
+    # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
+    # Hardswish each multiply per element, so they want formulas rather than a blanket entry. nn.Fold is
+    # out because it sums OVERLAPPING blocks, and an addition per input over a window is the work
+    # count_adap_avgpool charges rather than something a view does.
+    nn.Identity: zero_ops,
+    nn.Flatten: zero_ops,
+    nn.Unflatten: zero_ops,
+    nn.Unfold: zero_ops,
     nn.PixelShuffle: zero_ops,
+    nn.PixelUnshuffle: zero_ops,
+    nn.ChannelShuffle: zero_ops,
 }
 
 if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one count_normalization already reads
     register_hooks[nn.RMSNorm] = count_normalization
+
+if hasattr(nn.modules.padding, "_CircularPadNd"):  # torch>=2.1, which is where the CircularPad classes start
+    register_hooks[nn.modules.padding._CircularPadNd] = zero_ops
 
 
 def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing):
@@ -96,30 +126,95 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
         if t in custom_ops:  # if defined in both op maps, custom_ops overwrites
             fn = custom_ops[t]
             if first_seen and verbose:
-                print(f"[INFO] Customize rule {fn.__qualname__}() {m_type}.")
+                print(f"[INFO] Customize rule {getattr(fn, '__qualname__', fn)}() {m_type}.")
             return fn
         if t in register_hooks:
             fn = register_hooks[t]
             if first_seen and verbose:
-                print(f"[INFO] Register {fn.__qualname__}() for {m_type}.")
+                print(f"[INFO] Register {getattr(fn, '__qualname__', fn)}() for {m_type}.")
             return fn
     if first_seen and report_missing:
         prRed(f"[WARN] Cannot find rule for {m_type}. Treat it as zero Macs.")
     return None
 
 
+def _register_counter(m, fn, keep_result):
+    """Register a counting hook that receives positional and keyword arguments."""
+    if _HOOK_TAKES_KWARGS:
+
+        def counter(m, args, kwargs, y, fn=fn):
+            """Apply the counting rule to the arguments the module was called with."""
+            result = fn(m, _positional(m, args, kwargs) if kwargs else args, y)
+            return result if keep_result else None
+
+        return m.register_forward_hook(counter, with_kwargs=True)
+
+    def counter(m, args, y, fn=fn):
+        """Apply the counting rule; this torch delivers no keyword arguments for it to be given."""
+        result = fn(m, args, y)
+        return result if keep_result else None
+
+    return m.register_forward_hook(counter)
+
+
+def _positional(m, args, kwargs):
+    """Return supplied arguments in the order m.forward declares them."""
+    try:
+        bound = inspect.signature(m.forward).bind(*args, **kwargs)
+    except (TypeError, ValueError):
+        return ()
+    values = []
+    for name, value in bound.arguments.items():
+        kind = bound.signature.parameters[name].kind
+        if kind == inspect.Parameter.VAR_POSITIONAL:
+            values.extend(value)
+        elif kind != inspect.Parameter.VAR_KEYWORD:
+            values.append(value)
+    return tuple(values)
+
+
+def _parents_first(roots):
+    """List reachable modules with every parent before its children."""
+    order, seen = [], set()
+
+    def visit(m):
+        seen.add(m)
+        for c in m.children():
+            if c not in seen:
+                visit(c)
+        order.append(m)
+
+    for root in roots:
+        if root not in seen:
+            visit(root)
+    order.reverse()
+    return order
+
+
+def _displace_total_ops(m):
+    """Temporarily remove a caller-owned `total_ops` attribute or buffer."""
+    displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
+    logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
+    for store, _ in displaced:
+        del store["total_ops"]
+    return displaced
+
+
 def _restore_modes(prev_training):
-    """Restore each module's training mode."""
-    for m, was_training in prev_training.items():
+    """Restore recorded modes without changing modules attached during forward."""
+    order = _parents_first(prev_training)
+    modes = {m: prev_training.get(m, m.training) for m in order}  # read before the first train() call moves any
+    for m, was_training in modes.items():
         if m.training != was_training:
             m.train(was_training)
-    for m, was_training in prev_training.items():
+    for m, was_training in modes.items():
         m.training = was_training
 
 
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = {}
+    displaced_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -127,21 +222,22 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         verbose = True
 
     def add_hooks(m):
-        if list(m.children()) or m in handler_collection:
+        if (list(m.children()) and not isinstance(m, nn.MultiheadAttention)) or m in handler_collection:
             return
-
-        if hasattr(m, "total_ops"):
-            logging.warning(
-                f".total_ops is already defined in {m!s}. Be careful, it might change your code's behavior."
-            )
 
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
+        # register_buffer discards this flag; restore it without requiring the newer persistent= argument.
+        non_persistent = "total_ops" in m._non_persistent_buffers_set
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
+        if non_persistent:
+            m._non_persistent_buffers_set.add("total_ops")
         handler_collection[m] = None
-        if fn is not None:
-            handler_collection[m] = m.register_forward_hook(fn)
+        if fn is not None and fn is not zero_ops:
+            handler_collection[m] = _register_counter(m, fn, keep_result=True)  # as profile_origin always has
         types_collection.add(m_type)
 
     prev_training = {m: m.training for m in model.modules()}
@@ -164,6 +260,9 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             handler.remove()
         for m in handler_collection:
             m._buffers.pop("total_ops", None)
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
+                store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     return total_ops, total_params
@@ -180,6 +279,7 @@ def profile(
 ):
     """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs."""
     handler_collection = {}
+    displaced_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -195,27 +295,23 @@ def profile(
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
         # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
         m.__dict__["total_ops"] = 0
 
         handler_collection[m] = None
-        if fn is not None:
-
-            def counter(m, x, y, fn=fn):
-                """Apply the counting rule without allowing its return value to replace the module output."""
-                fn(m, x, y)
-
-            handler_collection[m] = m.register_forward_hook(counter)
+        if fn is not None and fn is not zero_ops:
+            handler_collection[m] = _register_counter(m, fn, keep_result=False)  # never the module output
         types_collection.add(m_type)
 
     counted = set()
 
     def dfs_count(module: nn.Module, prefix="\t") -> (float, dict):
-        """Recursively counts the total operations of the given PyTorch module and its submodules."""
-        # A custom rule may accumulate a tensor, and a module added during the forward has no temporary attribute.
-        total_ops = float(module.__dict__.get("total_ops", 0))
+        """Build layer details from the module tree left after forward."""
+        total_ops = float(module.__dict__.get("total_ops", 0)) if module in handler_collection else 0.0
         ret_dict = {}
         for n, m in module.named_children():
             # every child is walked, whether or not it carries a rule of its own: a rule accounts for its
@@ -244,7 +340,9 @@ def profile(
                 m.__dict__["total_ops"] = 0
             with torch.no_grad():
                 model(*input_values)
-            return dfs_count(model)
+            # Count the executed hook record; build the surviving tree only when requested.
+            total = sum(float(m.__dict__.get("total_ops", 0)) for m in handler_collection)
+            return total, dfs_count(model)[1] if ret_layer_info else {}
 
         if stride is None or ret_layer_info:
             total_ops, ret_dict = run(inputs)
@@ -270,7 +368,11 @@ def profile(
             required_samples = 2 if custom_ops or any(isinstance(m, fixed_ops) for m in model.modules()) else 1
             samples = []
             proxy_area = stride[0] * stride[1]
-            if target_height % stride[0] == target_width % stride[1] == 0 and proxy_area < target_height * target_width:
+            if (
+                not any(isinstance(m, nn.MultiheadAttention) for m in model.modules())
+                and target_height % stride[0] == target_width % stride[1] == 0
+                and proxy_area < target_height * target_width
+            ):
                 try:
                     for width in (stride[1], stride[1] * 2)[:required_samples]:
                         ops, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
@@ -297,6 +399,9 @@ def profile(
             handler.remove()
         for m in handler_collection:
             m.__dict__.pop("total_ops", None)
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
+                store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     if ret_layer_info:
