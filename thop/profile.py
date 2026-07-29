@@ -114,11 +114,8 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 def _register_counter(m, fn, keep_result):
     """Register fn as m's forward hook, handing it the arguments m was called with as one positional tuple.
 
-    A counting rule reads its input as x[0], so a module called entirely by keyword — legal, and what a forward naming
-    its parameter "input" invites — would otherwise hand the rule an empty tuple and fail after the forward pass had
-    already run. Only that case is rewritten: a call with any positional argument reaches the rule exactly as it always
-    has, because what x holds for it is the contract custom_ops is written against. torch<2.0 delivers no keyword
-    arguments to a hook, so there the rewrite has nothing to work from and the rule sees what it always saw.
+    Keyword arguments are bound in forward's declared order so rules receive the complete call. Positional-only calls
+    avoid signature inspection, and torch<2.0 retains its existing behavior because its hooks cannot deliver kwargs.
 
     keep_result says what torch does with whatever the rule returns, which is the one thing the two entry points have
     never agreed on: a forward hook may replace its module's output, profile() has always refused to let a rule do so,
@@ -128,7 +125,7 @@ def _register_counter(m, fn, keep_result):
 
         def counter(m, args, kwargs, y, fn=fn):
             """Apply the counting rule to the arguments the module was called with."""
-            result = fn(m, _positional(m, kwargs) if kwargs and not args else args, y)
+            result = fn(m, _positional(m, args, kwargs) if kwargs else args, y)
             return result if keep_result else None
 
         return m.register_forward_hook(counter, with_kwargs=True)
@@ -141,21 +138,23 @@ def _register_counter(m, fn, keep_result):
     return m.register_forward_hook(counter)
 
 
-def _positional(m, kwargs):
-    """Order keyword arguments the way m.forward declares them, or return nothing orderable as an empty tuple.
+def _positional(m, args, kwargs):
+    """Return supplied arguments in the order m.forward declares them, or an empty tuple when that is unknowable.
 
-    Every declared parameter is taken, not only the ones that could also have been passed positionally: a forward
-    declaring its input keyword-only is the case least able to be called any other way, so dropping it would leave
-    exactly the modules that need this with nothing. What *args and **kwargs collect is left out, and a forward that
-    declares nothing else, or that cannot be introspected at all, yields the empty tuple: their order is unknowable, and
-    guessing it from insertion order hands a rule the wrong tensor rather than no tensor.
+    Variadic collections are omitted because their order cannot be mapped to declared inputs reliably.
     """
     try:
-        bound = inspect.signature(m.forward).bind(**kwargs)
+        bound = inspect.signature(m.forward).bind(*args, **kwargs)
     except (TypeError, ValueError):
         return ()
-    variadic = {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}
-    return tuple(v for name, v in bound.arguments.items() if bound.signature.parameters[name].kind not in variadic)
+    values = []
+    for name, value in bound.arguments.items():
+        kind = bound.signature.parameters[name].kind
+        if kind == inspect.Parameter.VAR_POSITIONAL:
+            values.extend(value)
+        elif kind != inspect.Parameter.VAR_KEYWORD:
+            values.append(value)
+    return tuple(values)
 
 
 def _restore_modes(prev_training):
