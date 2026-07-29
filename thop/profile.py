@@ -109,10 +109,9 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 def _displace_total_ops(m):
     """Temporarily remove a caller-owned `total_ops` attribute or buffer."""
     displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
-    if displaced:  # record first, remove second: nothing may run between taking the value and owning a copy
-        logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
-        for store, _ in displaced:
-            del store["total_ops"]
+    logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
+    for store, _ in displaced:
+        del store["total_ops"]
     return displaced
 
 
@@ -144,10 +143,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
 
         if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
             displaced_collection[m] = _displace_total_ops(m)
-        # register_buffer discards the name from _non_persistent_buffers_set, which is not one of the stores
-        # displaced above, so a buffer the caller deliberately kept out of its state_dict would come back inside
-        # it and fail a strict load. The membership goes back by hand rather than through persistent=, which a
-        # subclass overriding register_buffer with the older two-argument signature cannot accept.
+        # register_buffer discards this flag; restore it without requiring the newer persistent= argument.
         non_persistent = "total_ops" in m._non_persistent_buffers_set
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
         if non_persistent:
@@ -177,8 +173,8 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             handler.remove()
         for m in handler_collection:
             m._buffers.pop("total_ops", None)
-        for m, displaced in displaced_collection.items():  # only once this call's own buffer is gone: it
-            for store, value in displaced:  # holds the same key, and would otherwise shadow what goes back
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
                 store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
@@ -316,8 +312,8 @@ def profile(
             handler.remove()
         for m in handler_collection:
             m.__dict__.pop("total_ops", None)
-        for m, displaced in displaced_collection.items():  # only once this call's own counter is gone: it
-            for store, value in displaced:  # holds the same key, and would otherwise shadow what goes back
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
                 store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
