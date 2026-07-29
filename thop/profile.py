@@ -31,7 +31,7 @@ from .vision.calc_func import calculate_parameters
 
 default_dtype = torch.float64
 
-# torch>=2.0, asked of the method rather than of the version string, which is what the call actually depends on
+# torch>=2.0
 _HOOK_TAKES_KWARGS = "with_kwargs" in inspect.signature(nn.Module.register_forward_hook).parameters
 
 register_hooks = {
@@ -112,15 +112,7 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
 
 def _register_counter(m, fn, keep_result):
-    """Register fn as m's forward hook, handing it the arguments m was called with as one positional tuple.
-
-    Keyword arguments are bound in forward's declared order so rules receive the complete call. Positional-only calls
-    avoid signature inspection, and torch<2.0 retains its existing behavior because its hooks cannot deliver kwargs.
-
-    keep_result says what torch does with whatever the rule returns, which is the one thing the two entry points have
-    never agreed on: a forward hook may replace its module's output, profile() has always refused to let a rule do so,
-    and profile_origin() has always allowed it. Each keeps its own answer, since nothing here is about return values.
-    """
+    """Register a counting hook that receives positional and keyword arguments."""
     if _HOOK_TAKES_KWARGS:
 
         def counter(m, args, kwargs, y, fn=fn):
@@ -139,10 +131,7 @@ def _register_counter(m, fn, keep_result):
 
 
 def _positional(m, args, kwargs):
-    """Return supplied arguments in the order m.forward declares them, or an empty tuple when that is unknowable.
-
-    Variadic collections are omitted because their order cannot be mapped to declared inputs reliably.
-    """
+    """Return supplied arguments in the order m.forward declares them."""
     try:
         bound = inspect.signature(m.forward).bind(*args, **kwargs)
     except (TypeError, ValueError):
