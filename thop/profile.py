@@ -81,7 +81,6 @@ register_hooks = {
     nn.AdaptiveAvgPool3d: count_adap_avgpool,
     nn.Linear: count_linear,
     nn.Bilinear: count_bilinear,
-    nn.MultiheadAttention: count_multihead_attention,
     nn.Upsample: count_upsample,
     nn.UpsamplingBilinear2d: count_upsample,
     nn.UpsamplingNearest2d: count_upsample,
@@ -106,6 +105,9 @@ register_hooks = {
     nn.PixelUnshuffle: zero_ops,
     nn.ChannelShuffle: zero_ops,
 }
+
+if _HOOK_TAKES_KWARGS:
+    register_hooks[nn.MultiheadAttention] = count_multihead_attention
 
 if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one count_normalization already reads
     register_hooks[nn.RMSNorm] = count_normalization
