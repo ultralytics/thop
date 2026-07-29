@@ -30,10 +30,12 @@ from .vision.calc_func import calculate_parameters
 default_dtype = torch.float64
 
 register_hooks = {
-    # the constant-padding and dropout families through the private base each shares, as the norm families
-    # below need for the same reason: naming the two concrete classes left their 10 siblings rule-less, so
+    # the padding and dropout families through the private base each shares, as the norm families below
+    # need for the same reason: naming the two concrete classes left their 10 siblings rule-less, so
     # report_missing warned about layers that have nothing to count and taught the reader to ignore it
     nn.modules.padding._ConstantPadNd: zero_ops,  # padding does not involve any multiplication
+    nn.modules.padding._ReflectionPadNd: zero_ops,
+    nn.modules.padding._ReplicationPadNd: zero_ops,
     nn.modules.dropout._DropoutNd: zero_ops,
     nn.Conv1d: count_convNd,
     nn.Conv2d: count_convNd,
@@ -58,6 +60,8 @@ register_hooks = {
     nn.AdaptiveMaxPool1d: zero_ops,
     nn.AdaptiveMaxPool2d: zero_ops,
     nn.AdaptiveMaxPool3d: zero_ops,
+    nn.FractionalMaxPool2d: zero_ops,  # a max pool that picks its windows randomly still only selects
+    nn.FractionalMaxPool3d: zero_ops,
     nn.AvgPool1d: count_avgpool,
     nn.AvgPool2d: count_avgpool,
     nn.AvgPool3d: count_avgpool,
@@ -75,11 +79,26 @@ register_hooks = {
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
     nn.Sequential: zero_ops,
+    # layers that only move elements around: a view, a re-index or a permutation reads and writes each
+    # element once and multiplies nothing. The elementwise activations that also reach no rule are left
+    # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
+    # Hardswish each multiply per element, so they want formulas rather than a blanket entry. nn.Fold is
+    # out because it sums OVERLAPPING blocks, and an addition per input over a window is the work
+    # count_adap_avgpool charges rather than something a view does.
+    nn.Identity: zero_ops,
+    nn.Flatten: zero_ops,
+    nn.Unflatten: zero_ops,
+    nn.Unfold: zero_ops,
     nn.PixelShuffle: zero_ops,
+    nn.PixelUnshuffle: zero_ops,
+    nn.ChannelShuffle: zero_ops,
 }
 
 if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one count_normalization already reads
     register_hooks[nn.RMSNorm] = count_normalization
+
+if hasattr(nn.modules.padding, "_CircularPadNd"):  # torch>=2.1, which is where the CircularPad classes start
+    register_hooks[nn.modules.padding._CircularPadNd] = zero_ops
 
 
 def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing):
