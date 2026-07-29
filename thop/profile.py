@@ -1,5 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import inspect
+
 from thop.rnn_hooks import (
     count_gru,
     count_gru_cell,
@@ -28,6 +30,9 @@ from .utils import prRed
 from .vision.calc_func import calculate_parameters
 
 default_dtype = torch.float64
+
+# torch>=2.0, asked of the method rather than of the version string, which is what the call actually depends on
+_HOOK_TAKES_KWARGS = "with_kwargs" in inspect.signature(nn.Module.register_forward_hook).parameters
 
 register_hooks = {
     # the constant-padding and dropout families through the private base each shares, as the norm families
@@ -106,6 +111,48 @@ def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
     return None
 
 
+def _register_counter(m, fn):
+    """Register fn as m's forward hook, handing it the arguments m was called with as one positional tuple.
+
+    A counting rule reads its input as x[0], so a module called entirely by keyword — legal, and how a forward naming
+    its parameter "input" invites being called — would otherwise hand the rule an empty tuple and fail after the forward
+    pass had already run. Only that case is rewritten: a call with any positional argument reaches the rule exactly as
+    it always has, because what x holds for it is the documented contract custom_ops is written
+    against. torch<2.0 cannot deliver keyword arguments to a hook at all, so there the rewrite has nothing to work
+    from and the rule sees what it always saw.
+    """
+    if _HOOK_TAKES_KWARGS:
+
+        def counter(m, args, kwargs, y, fn=fn):
+            """Apply the counting rule without allowing its return value to replace the module output."""
+            fn(m, _positional(m, kwargs) if kwargs and not args else args, y)
+
+        return m.register_forward_hook(counter, with_kwargs=True)
+
+    def counter(m, args, y, fn=fn):
+        """Apply the counting rule without allowing its return value to replace the module output."""
+        fn(m, args, y)
+
+    return m.register_forward_hook(counter)
+
+
+def _positional(m, kwargs):
+    """Order keyword arguments the way m.forward declares them, or return nothing orderable as an empty tuple.
+
+    Every declared parameter is taken, not only the ones that could also have been passed positionally: a forward
+    declaring its input keyword-only is the case least able to be called any other way, so dropping it would leave
+    exactly the modules that need this with nothing. What *args and **kwargs collect is left out, and a forward that
+    declares nothing else, or that cannot be introspected at all, yields the empty tuple: their order is unknowable, and
+    guessing it from insertion order hands a rule the wrong tensor rather than no tensor.
+    """
+    try:
+        bound = inspect.signature(m.forward).bind(**kwargs)
+    except (TypeError, ValueError):
+        return ()
+    variadic = {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}
+    return tuple(v for name, v in bound.arguments.items() if bound.signature.parameters[name].kind not in variadic)
+
+
 def _restore_modes(prev_training):
     """Restore each module's training mode."""
     for m, was_training in prev_training.items():
@@ -139,7 +186,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
         handler_collection[m] = None
         if fn is not None:
-            handler_collection[m] = m.register_forward_hook(fn)
+            handler_collection[m] = _register_counter(m, fn)
         types_collection.add(m_type)
 
     prev_training = {m: m.training for m in model.modules()}
@@ -200,12 +247,7 @@ def profile(
 
         handler_collection[m] = None
         if fn is not None:
-
-            def counter(m, x, y, fn=fn):
-                """Apply the counting rule without allowing its return value to replace the module output."""
-                fn(m, x, y)
-
-            handler_collection[m] = m.register_forward_hook(counter)
+            handler_collection[m] = _register_counter(m, fn)
         types_collection.add(m_type)
 
     counted = set()
