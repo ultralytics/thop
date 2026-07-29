@@ -168,3 +168,27 @@ def count_linear(m, x, y):
     num_elements = y.numel()
 
     m.total_ops += calculate_linear(total_mul, num_elements)
+
+
+def count_multihead_attention(m: nn.MultiheadAttention, x, y):
+    """Count projections, attention matrix products, and softmax.
+
+    MultiheadAttention calls its projection weights functionally, so none of this work reaches a child-module hook.
+    Returned weights reveal appended key positions; calls that suppress them fall back to the key input.
+    """
+    out, weights = y if isinstance(y, tuple) else (y, None)
+    batch_first = getattr(m, "batch_first", False)  # added in torch 1.9; before it the layout is always (L, N, E)
+    tgt_len = out.shape[-2] if batch_first or out.dim() == 2 else out.shape[0]
+    batch_size = 1 if out.dim() == 2 else out.shape[0 if batch_first else 1]
+    appended = (m.bias_k is not None) + m.add_zero_attn  # each adds one key position, after the projections have run
+    if weights is not None:
+        attended = weights.shape[-1]
+    else:
+        key = x[1]
+        attended = (key.shape[-2] if batch_first or key.dim() == 2 else key.shape[0]) + appended
+
+    # Heads sum to embed_dim across both attention matrix products, so num_heads only multiplies the softmax rows.
+    projections = m.embed_dim * (2 * tgt_len * m.embed_dim + (attended - appended) * (m.kdim + m.vdim))
+    attention = 2 * tgt_len * attended * m.embed_dim
+    softmax = calculate_softmax(batch_size * m.num_heads * tgt_len, attended)
+    m.total_ops += batch_size * (projections + attention) + softmax
