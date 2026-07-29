@@ -104,13 +104,20 @@ def count_softmax(m, x, y):
 
 
 def count_avgpool(m, x, y):
-    """Calculate and update the total operation counts for an AvgPool layer from the window it averages."""
+    """Calculate and update the total operation count for an AvgPool layer."""
     kernel = m.kernel_size
     if isinstance(kernel, int):  # only AvgPool2d and AvgPool3d keep it as passed, AvgPool1d normalizes to a tuple
         kernel = (kernel,) * (3 if isinstance(m, nn.AvgPool3d) else 2)
-    # One add per pooled input and one divide per output, as count_adap_avgpool already charges. The output
-    # element count this replaced ignored the window, so every kernel size cost the same.
-    m.total_ops += (l_prod(kernel) + 1) * y.numel()
+    dims = len(kernel)
+    stride = (m.stride,) * dims if isinstance(m.stride, int) else m.stride
+    padding = (m.padding,) * dims if isinstance(m.padding, int) else m.padding
+    windows = 1
+    for size, output, k, s, p in zip(x[0].shape[-dims:], y.shape[-dims:], kernel, stride, padding):
+        lower, upper = (-p, size + p) if m.count_include_pad else (0, size)
+        windows *= sum(
+            max(min(i * s - p + k, upper) - max(i * s - p, lower), 0) for i in range(output)
+        )
+    m.total_ops += l_prod(x[0].shape[:-dims]) * windows + y.numel()  # one add per input, one divide per output
 
 
 def count_adap_avgpool(m, x, y):
