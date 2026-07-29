@@ -92,15 +92,21 @@ def count_prelu(m, x, y):
 def count_softmax(m, x, y):
     """Calculate and update the total operation counts for a Softmax layer in a PyTorch model."""
     x = x[0]
-    # nn.Softmax(dim=None) is deprecated but still legal and still runs, resolving the dimension itself, so the
-    # count follows the same rule rather than raising: dimension 0 for 0-, 1- and 3-dimensional input, 1 otherwise
-    dim = m.dim if m.dim is not None else 0 if x.dim() in {0, 1, 3} else 1
+    # Softmax2d always normalizes channels, with or without a batch dimension.
+    dim = -3 if isinstance(m, nn.Softmax2d) else m.dim
+    if dim is None:
+        # Match torch's deprecated implicit dimension.
+        dim = 0 if x.dim() in {0, 1, 3} else 1
     # a scalar normalizes over itself, which no shape entry can say: torch returns 1.0 for it, so the cost is
     # the one exponential and the one division that produce that, and indexing the empty shape only raises
     nfeatures = x.size()[dim] if x.dim() else 1
-    batch_size = x.numel() // nfeatures
+    batch_size = x.numel() // nfeatures if nfeatures else 0
 
     m.total_ops += calculate_softmax(batch_size, nfeatures)
+    if isinstance(m, nn.Softmin):
+        m.total_ops += x.numel()
+    elif isinstance(m, nn.LogSoftmax):
+        m.total_ops += batch_size
 
 
 def count_avgpool(m, x, y):

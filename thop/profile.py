@@ -50,7 +50,11 @@ register_hooks = {
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
+    # The softmax family shares no base, so each member is registered explicitly.
     nn.Softmax: count_softmax,
+    nn.LogSoftmax: count_softmax,
+    nn.Softmin: count_softmax,
+    nn.Softmax2d: count_softmax,
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
     nn.LeakyReLU: zero_ops,
