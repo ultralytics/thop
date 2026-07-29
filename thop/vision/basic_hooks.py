@@ -151,3 +151,19 @@ def count_linear(m, x, y):
     num_elements = y.numel()
 
     m.total_ops += calculate_linear(total_mul, num_elements)
+
+
+# nn.Bilinear
+def count_bilinear(m, x, y):
+    """Counts total operations for nn.Bilinear layers, where both inputs meet in every output element.
+
+    nn.Bilinear derives from nn.Module rather than from nn.Linear, so the mro walk that resolves rules reaches no
+    ancestor carrying one and the layer was charged nothing. It is still the same shape of work: y = x1 @ W[k] @ x2
+    pairs every element of one input with every element of the other, so each output element costs in1 * in2 where a
+    linear one costs in_features, and the element count is read off the output for the same reason count_linear reads it
+    there -- torch accepts any number of leading dimensions and neither rule needs to know which of them is a batch.
+    """
+    total_mul = m.in1_features * m.in2_features
+    num_elements = y.numel()
+
+    m.total_ops += calculate_linear(total_mul, num_elements)
