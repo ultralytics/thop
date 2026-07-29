@@ -157,7 +157,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
 
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
         handler_collection[m] = None
-        if fn is not None:
+        if fn is not None and fn is not zero_ops:
             handler_collection[m] = m.register_forward_hook(fn)
         types_collection.add(m_type)
 
@@ -218,7 +218,7 @@ def profile(
         m.__dict__["total_ops"] = 0
 
         handler_collection[m] = None
-        if fn is not None:
+        if fn is not None and fn is not zero_ops:
 
             def counter(m, x, y, fn=fn):
                 """Apply the counting rule without allowing its return value to replace the module output."""
