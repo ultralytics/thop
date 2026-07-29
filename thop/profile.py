@@ -154,14 +154,14 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
         displaced_collection[m] = _displace_total_ops(m)
-        # matching the caller's persistence: register_buffer discards the name from _non_persistent_buffers_set
-        # when it registers a persistent one, and that set is not part of what was displaced, so a buffer the
-        # caller kept out of its state_dict would come back in it and fail a strict load.
-        m.register_buffer(
-            "total_ops",
-            torch.zeros(1, dtype=default_dtype),
-            persistent="total_ops" not in m._non_persistent_buffers_set,
-        )
+        # register_buffer discards the name from _non_persistent_buffers_set, which is not one of the stores
+        # displaced above, so a buffer the caller deliberately kept out of its state_dict would come back inside
+        # it and fail a strict load. The membership goes back by hand rather than through persistent=, which a
+        # subclass overriding register_buffer with the older two-argument signature cannot accept.
+        non_persistent = "total_ops" in m._non_persistent_buffers_set
+        m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
+        if non_persistent:
+            m._non_persistent_buffers_set.add("total_ops")
         handler_collection[m] = None
         if fn is not None:
             handler_collection[m] = m.register_forward_hook(fn)
