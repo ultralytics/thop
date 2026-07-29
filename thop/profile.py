@@ -66,7 +66,7 @@ register_hooks = {
     nn.AdaptiveAvgPool2d: count_adap_avgpool,
     nn.AdaptiveAvgPool3d: count_adap_avgpool,
     nn.Linear: count_linear,
-    nn.Bilinear: count_bilinear,  # a sibling of nn.Linear by file only: its mro shares nothing but nn.Module
+    nn.Bilinear: count_bilinear,
     nn.Upsample: count_upsample,
     nn.UpsamplingBilinear2d: count_upsample,
     nn.UpsamplingNearest2d: count_upsample,
