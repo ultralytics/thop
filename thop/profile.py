@@ -48,9 +48,7 @@ register_hooks = {
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
-    # the whole softmax family, which shares no base, so each member is named. They differ from a plain softmax
-    # by the channel axis Softmax2d normalizes, the negation Softmin applies and the logarithm LogSoftmax takes,
-    # and count_softmax reads all three off the module rather than needing a rule apiece
+    # The softmax family shares no base, so each member is registered explicitly.
     nn.Softmax: count_softmax,
     nn.LogSoftmax: count_softmax,
     nn.Softmin: count_softmax,

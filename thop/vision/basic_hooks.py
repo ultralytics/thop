@@ -93,26 +93,20 @@ def count_prelu(m, x, y):
 def count_softmax(m, x, y):
     """Calculate and update the total operation counts for a Softmax layer in a PyTorch model."""
     x = x[0]
-    # nn.Softmax2d owns no dim at all: it always normalizes the channel axis, which is the third from the end
-    # for both the batched and the unbatched input it accepts. Naming the one class it holds for keeps every
-    # other dim-less module raising as it did, rather than being handed a channel axis it never asked for
+    # Softmax2d always normalizes channels, with or without a batch dimension.
     dim = -3 if isinstance(m, nn.Softmax2d) else m.dim
     if dim is None:
-        # nn.Softmax(dim=None) is deprecated but still legal and still runs, resolving the dimension itself, so
-        # the count follows that rule rather than raising: dimension 0 for 0-, 1- and 3-dimensional input, 1 otherwise
+        # Match torch's deprecated implicit dimension.
         dim = 0 if x.dim() in {0, 1, 3} else 1
     # a scalar normalizes over itself, which no shape entry can say: torch returns 1.0 for it, so the cost is
     # the one exponential and the one division that produce that, and indexing the empty shape only raises
     nfeatures = x.size()[dim] if x.dim() else 1
-    # an empty normalized axis is no work at all, and it leaves no vector count to divide out of the element count
     batch_size = x.numel() // nfeatures if nfeatures else 0
 
     m.total_ops += calculate_softmax(batch_size, nfeatures)
-    # what each variant costs on top of the plain softmax. Both terms are worth writing because calculate_softmax
-    # charges nfeatures - 1 additions rather than nfeatures, so it is already exact to within one op per vector
-    if isinstance(m, nn.Softmin):  # torch runs it as (-x).softmax(dim), one negation per element
+    if isinstance(m, nn.Softmin):
         m.total_ops += x.numel()
-    elif isinstance(m, nn.LogSoftmax):  # torch runs it as x - logsumexp(x), one logarithm per normalized vector
+    elif isinstance(m, nn.LogSoftmax):
         m.total_ops += batch_size
 
 
