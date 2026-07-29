@@ -7,7 +7,6 @@ from torch import nn
 from torch.nn.modules.conv import _ConvNd
 
 from thop.vision.calc_func import (
-    calculate_avgpool,
     calculate_conv2d_flops,
     calculate_linear,
     calculate_norm,
@@ -105,11 +104,13 @@ def count_softmax(m, x, y):
 
 
 def count_avgpool(m, x, y):
-    """Calculate and update the total number of operations (FLOPs) for an AvgPool layer based on the output elements."""
-    # total_div = 1
-    # kernel_ops = total_add + total_div
-    num_elements = y.numel()
-    m.total_ops += calculate_avgpool(num_elements)
+    """Calculate and update the total operation counts for an AvgPool layer from the window it averages."""
+    kernel = m.kernel_size
+    if isinstance(kernel, int):  # only AvgPool2d and AvgPool3d keep it as passed, AvgPool1d normalizes to a tuple
+        kernel = (kernel,) * (3 if isinstance(m, nn.AvgPool3d) else 2)
+    # One add per pooled input and one divide per output, as count_adap_avgpool already charges. The output
+    # element count this replaced ignored the window, so every kernel size cost the same.
+    m.total_ops += (l_prod(kernel) + 1) * y.numel()
 
 
 def count_adap_avgpool(m, x, y):
@@ -117,12 +118,17 @@ def count_adap_avgpool(m, x, y):
     # the windows nn.AdaptiveAvgPool* actually slices, per dimension: output j spans
     # [j * I // O, ceil((j + 1) * I / O)), so their sizes are integral and unequal whenever O does not divide I.
     # The input-over-output ratio this replaced was a float, which made total_ops fractional, and it was also
-    # smaller than the window it stood for
-    windows = l_prod(
-        sum(-(-(j + 1) * i // o) - j * i // o for j in range(o)) for i, o in zip(x[0].shape[2:], y.shape[2:])
-    )
-    num_elements = y.numel()
-    m.total_ops += windows * (num_elements // l_prod(y.shape[2:])) + num_elements  # one add per input, one divide out
+    # smaller than the window it stood for.
+    # Every axis is walked, not only the pooled ones: an axis the layer leaves alone has one input per output, so
+    # it contributes its own length and the batch and channel counts fall out of the same product. That is what
+    # the pooled-axes slice had to multiply back by hand, and it needs no batch axis to be there to slice off.
+    m.total_ops += (
+        l_prod(
+            o if i == o else sum(-(-(j + 1) * i // o) - j * i // o for j in range(o))
+            for i, o in zip(x[0].shape, y.shape)
+        )
+        + y.numel()
+    )  # one add per pooled input, one divide per output
 
 
 # TODO: verify the accuracy
