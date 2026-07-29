@@ -151,3 +151,39 @@ def count_linear(m, x, y):
     num_elements = y.numel()
 
     m.total_ops += calculate_linear(total_mul, num_elements)
+
+
+def count_multihead_attention(m: nn.MultiheadAttention, x, y):
+    """Count the four projections, the two attention matrix products and the softmax between them.
+
+    The whole layer is counted here because none of its arithmetic is reachable any lower: in_proj_weight is a bare
+    Parameter with no module to hook, and F.multi_head_attention_forward reads out_proj.weight and out_proj.bias
+    directly instead of calling out_proj, so that submodule's forward hook never fires.
+
+    How many key positions were attended to is read off the returned weights rather than off the key argument: it is
+    what the layer reports about the pass that just ran, it already includes the position add_bias_kv or add_zero_attn
+    appends, and it is there however the caller passed the key. Suppressing the weights is the one thing that hides it,
+    and then the key answers instead -- which is why need_weights=False, the layout torch's own TransformerEncoderLayer
+    uses, is the case the fallback exists for. A subclass that returns the output on its own takes that same fallback:
+    rules resolve through the MRO, so one reaches this layer, and reading row 1 of a bare tensor as though it were the
+    weights reports a number rather than failing.
+    """
+    out, weights = y if isinstance(y, tuple) else (y, None)
+    batch_first = getattr(m, "batch_first", False)  # added in torch 1.9; before it the layout is always (L, N, E)
+    tgt_len = out.shape[-2] if batch_first or out.dim() == 2 else out.shape[0]
+    batch_size = 1 if out.dim() == 2 else out.shape[0 if batch_first else 1]
+    appended = (m.bias_k is not None) + m.add_zero_attn  # each adds one key position, after the projections have run
+    if weights is not None:
+        attended = weights.shape[-1]
+    else:
+        key = x[1]
+        attended = (key.shape[-2] if batch_first or key.dim() == 2 else key.shape[0]) + appended
+
+    # the query and output projections are embed_dim wide, the key and value ones as wide as the source they read.
+    # Scores against the keys and the weighted sum of the values are tgt_len x attended x embed_dim each once the
+    # heads are summed, so num_heads does not appear: every head contributes embed_dim // num_heads of it
+    projections = m.embed_dim * (2 * tgt_len * m.embed_dim + (attended - appended) * (m.kdim + m.vdim))
+    attention = 2 * tgt_len * attended * m.embed_dim
+    # every head normalizes over the attended keys once per query position, at what nn.Softmax costs here
+    softmax = calculate_softmax(batch_size * m.num_heads * tgt_len, attended)
+    m.total_ops += batch_size * (projections + attention) + softmax

@@ -46,7 +46,7 @@ def calculate_norm(input_size):
 def calculate_softmax(batch_size, nfeatures):
     """Compute FLOPs for a softmax activation given batch size and feature count."""
     total_exp = nfeatures
-    total_add = nfeatures - 1
+    total_add = max(nfeatures - 1, 0)  # normalizing an empty axis costs nothing, rather than one negative addition
     total_div = nfeatures
     total_ops = batch_size * (total_exp + total_add + total_div)
     return int(total_ops)
