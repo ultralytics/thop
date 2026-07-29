@@ -4,8 +4,9 @@ import inspect
 
 import pytest
 import torch
-from thop import profile, profile_origin
 from torch import nn
+
+from thop import profile, profile_origin
 
 # asked of torch rather than of thop, so this file states the platform boundary independently of the code under test
 HOOK_TAKES_KWARGS = "with_kwargs" in inspect.signature(nn.Module.register_forward_hook).parameters
