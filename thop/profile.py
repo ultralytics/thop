@@ -48,7 +48,13 @@ register_hooks = {
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
+    # the whole softmax family, which shares no base: Softmin is a softmax of the negated input and LogSoftmax
+    # adds one logarithm per normalized vector, both below the granularity a rule that prices an exponential at
+    # one operation can express, and Softmax2d is a softmax over the channel axis that count_softmax resolves
     nn.Softmax: count_softmax,
+    nn.LogSoftmax: count_softmax,
+    nn.Softmin: count_softmax,
+    nn.Softmax2d: count_softmax,
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
     nn.LeakyReLU: zero_ops,
