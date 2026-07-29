@@ -127,7 +127,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         verbose = True
 
     def add_hooks(m):
-        if list(m.children()) or m in handler_collection:
+        if (list(m.children()) and not isinstance(m, nn.MultiheadAttention)) or m in handler_collection:
             return
 
         if hasattr(m, "total_ops"):
@@ -270,7 +270,11 @@ def profile(
             required_samples = 2 if custom_ops or any(isinstance(m, fixed_ops) for m in model.modules()) else 1
             samples = []
             proxy_area = stride[0] * stride[1]
-            if target_height % stride[0] == target_width % stride[1] == 0 and proxy_area < target_height * target_width:
+            if (
+                not any(isinstance(m, nn.MultiheadAttention) for m in model.modules())
+                and target_height % stride[0] == target_width % stride[1] == 0
+                and proxy_area < target_height * target_width
+            ):
                 try:
                     for width in (stride[1], stride[1] * 2)[:required_samples]:
                         ops, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
