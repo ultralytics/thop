@@ -30,10 +30,12 @@ from .vision.calc_func import calculate_parameters
 default_dtype = torch.float64
 
 register_hooks = {
-    # the constant-padding and dropout families through the private base each shares, as the norm families
-    # below need for the same reason: naming the two concrete classes left their 10 siblings rule-less, so
+    # the padding and dropout families through the private base each shares, as the norm families below
+    # need for the same reason: naming the two concrete classes left their 10 siblings rule-less, so
     # report_missing warned about layers that have nothing to count and taught the reader to ignore it
     nn.modules.padding._ConstantPadNd: zero_ops,  # padding does not involve any multiplication
+    nn.modules.padding._ReflectionPadNd: zero_ops,
+    nn.modules.padding._ReplicationPadNd: zero_ops,
     nn.modules.dropout._DropoutNd: zero_ops,
     nn.Conv1d: count_convNd,
     nn.Conv2d: count_convNd,
@@ -48,7 +50,11 @@ register_hooks = {
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
+    # The softmax family shares no base, so each member is registered explicitly.
     nn.Softmax: count_softmax,
+    nn.LogSoftmax: count_softmax,
+    nn.Softmin: count_softmax,
+    nn.Softmax2d: count_softmax,
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
     nn.LeakyReLU: zero_ops,
@@ -58,6 +64,8 @@ register_hooks = {
     nn.AdaptiveMaxPool1d: zero_ops,
     nn.AdaptiveMaxPool2d: zero_ops,
     nn.AdaptiveMaxPool3d: zero_ops,
+    nn.FractionalMaxPool2d: zero_ops,  # a max pool that picks its windows randomly still only selects
+    nn.FractionalMaxPool3d: zero_ops,
     nn.AvgPool1d: count_avgpool,
     nn.AvgPool2d: count_avgpool,
     nn.AvgPool3d: count_avgpool,
@@ -75,11 +83,26 @@ register_hooks = {
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
     nn.Sequential: zero_ops,
+    # layers that only move elements around: a view, a re-index or a permutation reads and writes each
+    # element once and multiplies nothing. The elementwise activations that also reach no rule are left
+    # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
+    # Hardswish each multiply per element, so they want formulas rather than a blanket entry. nn.Fold is
+    # out because it sums OVERLAPPING blocks, and an addition per input over a window is the work
+    # count_adap_avgpool charges rather than something a view does.
+    nn.Identity: zero_ops,
+    nn.Flatten: zero_ops,
+    nn.Unflatten: zero_ops,
+    nn.Unfold: zero_ops,
     nn.PixelShuffle: zero_ops,
+    nn.PixelUnshuffle: zero_ops,
+    nn.ChannelShuffle: zero_ops,
 }
 
 if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one count_normalization already reads
     register_hooks[nn.RMSNorm] = count_normalization
+
+if hasattr(nn.modules.padding, "_CircularPadNd"):  # torch>=2.1, which is where the CircularPad classes start
+    register_hooks[nn.modules.padding._CircularPadNd] = zero_ops
 
 
 def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing):
@@ -124,6 +147,15 @@ def _parents_first(roots):
     return order
 
 
+def _displace_total_ops(m):
+    """Temporarily remove a caller-owned `total_ops` attribute or buffer."""
+    displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
+    logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
+    for store, _ in displaced:
+        del store["total_ops"]
+    return displaced
+
+
 def _restore_modes(prev_training):
     """Restore recorded modes without changing modules attached during forward."""
     order = _parents_first(prev_training)
@@ -138,6 +170,7 @@ def _restore_modes(prev_training):
 def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=False):
     """Profile a model with the legacy per-leaf-module traversal, returning total operations and parameters."""
     handler_collection = {}
+    displaced_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -148,17 +181,18 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         if list(m.children()) or m in handler_collection:
             return
 
-        if hasattr(m, "total_ops"):
-            logging.warning(
-                f".total_ops is already defined in {m!s}. Be careful, it might change your code's behavior."
-            )
-
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
+        # register_buffer discards this flag; restore it without requiring the newer persistent= argument.
+        non_persistent = "total_ops" in m._non_persistent_buffers_set
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
+        if non_persistent:
+            m._non_persistent_buffers_set.add("total_ops")
         handler_collection[m] = None
-        if fn is not None:
+        if fn is not None and fn is not zero_ops:
             handler_collection[m] = m.register_forward_hook(fn)
         types_collection.add(m_type)
 
@@ -182,6 +216,9 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
             handler.remove()
         for m in handler_collection:
             m._buffers.pop("total_ops", None)
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
+                store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     return total_ops, total_params
@@ -198,6 +235,7 @@ def profile(
 ):
     """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs."""
     handler_collection = {}
+    displaced_collection = {}
     types_collection = set()
     if custom_ops is None:
         custom_ops = {}
@@ -213,13 +251,15 @@ def profile(
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
+        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
+            displaced_collection[m] = _displace_total_ops(m)
         # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
         m.__dict__["total_ops"] = 0
 
         handler_collection[m] = None
-        if fn is not None:
+        if fn is not None and fn is not zero_ops:
 
             def counter(m, x, y, fn=fn):
                 """Apply the counting rule without allowing its return value to replace the module output."""
@@ -316,6 +356,9 @@ def profile(
             handler.remove()
         for m in handler_collection:
             m.__dict__.pop("total_ops", None)
+        for m, displaced in displaced_collection.items():
+            for store, value in displaced:
+                store["total_ops"] = value
         _restore_modes(prev_training)  # last: it calls train(), which is the caller's code and may raise
 
     if ret_layer_info:
