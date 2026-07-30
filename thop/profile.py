@@ -17,7 +17,6 @@ from thop.vision.basic_hooks import (
     count_bilinear,
     count_convNd,
     count_convtNd,
-    count_embedding,
     count_linear,
     count_multihead_attention,
     count_normalization,
@@ -97,16 +96,18 @@ register_hooks = {
     # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
     # Hardswish each multiply per element, so they want formulas rather than a blanket entry. nn.Fold is
     # out because it sums OVERLAPPING blocks, and an addition per input over a window is the work
-    # count_adap_avgpool charges rather than something a view does.
+    # count_adap_avgpool charges rather than something a view does. An nn.Embedding gather is one of these: its
+    # max_norm rescale is left uncounted, being data-dependent on which rows the indices push over the limit.
+    # nn.EmbeddingBag stays out entirely, since it really does reduce each bag, and how many adds that takes is
+    # not a function of shape either: padding_idx entries drop out and repeated offsets make empty bags.
     nn.Identity: zero_ops,
+    nn.Embedding: zero_ops,
     nn.Flatten: zero_ops,
     nn.Unflatten: zero_ops,
     nn.Unfold: zero_ops,
     nn.PixelShuffle: zero_ops,
     nn.PixelUnshuffle: zero_ops,
     nn.ChannelShuffle: zero_ops,
-    # nn.EmbeddingBag stays unregistered: padding_idx drops entries and repeated offsets make empty bags.
-    nn.Embedding: count_embedding,
 }
 
 if _HOOK_TAKES_KWARGS:

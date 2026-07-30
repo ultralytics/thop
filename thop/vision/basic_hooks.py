@@ -23,12 +23,6 @@ def zero_ops(m, x, y):
     m.total_ops += calculate_zero_ops()
 
 
-def count_embedding(m, x, y):
-    """Count an embedding lookup, which copies weight rows and multiplies nothing."""
-    if m.max_norm is not None:  # it rescales only the rows over the limit, so the cost follows the data
-        logging.getLogger(__name__).warning("max_norm renormalization is not counted")
-
-
 def count_convNd(m: _ConvNd, x, y: torch.Tensor):
     """Calculate and add the number of convolutional operations (FLOPs) for a ConvNd layer to the model's total ops."""
     x = x[0]
