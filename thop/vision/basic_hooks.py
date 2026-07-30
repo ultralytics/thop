@@ -95,6 +95,16 @@ def count_prelu(m, x, y):
         m.total_ops += x.numel()
 
 
+def count_gated_activation(m, x, y):
+    """Count the data-multiplies in a self-gated activation (SiLU/GELU: x * g(x)); the gate's own compare/exp/log tail
+    contributes no multiply, the same convention count_linear already applies to its folded-in adds.
+
+    GELU's tanh approximation cubes x inside the gate (x + 0.044715 * x**3), two more data multiplies on top of the
+    outer x * gate one; GELU's exact form and SiLU have only the outer one.
+    """
+    m.total_ops += y.numel() * (3 if getattr(m, "approximate", "none") == "tanh" else 1)
+
+
 def count_softmax(m, x, y):
     """Calculate and update the total operation counts for a Softmax layer in a PyTorch model."""
     x = x[0]

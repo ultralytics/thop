@@ -18,6 +18,7 @@ from thop.vision.basic_hooks import (
     count_convNd,
     count_convtNd,
     count_embedding,
+    count_gated_activation,
     count_linear,
     count_multihead_attention,
     count_normalization,
@@ -66,6 +67,24 @@ register_hooks = {
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
     nn.LeakyReLU: zero_ops,
+    # the rest of torch.nn's stateless activations that, like LeakyReLU's own negative_slope * x, only ever multiply
+    # by a fixed, data-independent scalar (alpha/beta/lambda) or do no multiply at all (compare/select/exp/log) —
+    # SiLU/GELU below are the two that gate by a genuine per-element function of the input instead.
+    nn.ELU: zero_ops,
+    nn.CELU: zero_ops,
+    nn.SELU: zero_ops,
+    nn.Sigmoid: zero_ops,
+    nn.LogSigmoid: zero_ops,
+    nn.Tanh: zero_ops,
+    nn.Tanhshrink: zero_ops,
+    nn.Hardtanh: zero_ops,
+    nn.Hardsigmoid: zero_ops,
+    nn.Hardshrink: zero_ops,
+    nn.Softplus: zero_ops,
+    nn.Softshrink: zero_ops,
+    nn.Softsign: zero_ops,
+    nn.RReLU: zero_ops,
+    nn.Threshold: zero_ops,
     nn.MaxPool1d: zero_ops,
     nn.MaxPool2d: zero_ops,
     nn.MaxPool3d: zero_ops,
@@ -99,11 +118,7 @@ register_hooks = {
     nn.ParameterList: zero_ops,
     nn.ParameterDict: zero_ops,
     # layers that only move elements around: a view, a re-index or a permutation reads and writes each
-    # element once and multiplies nothing. The elementwise activations that also reach no rule are left
-    # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
-    # Hardswish each multiply per element, so they want formulas rather than a blanket entry. nn.Fold is
-    # out because it sums OVERLAPPING blocks, and an addition per input over a window is the work
-    # count_adap_avgpool charges rather than something a view does.
+    # element once and multiplies nothing.
     nn.Identity: zero_ops,
     nn.Flatten: zero_ops,
     nn.Unflatten: zero_ops,
@@ -111,6 +126,16 @@ register_hooks = {
     nn.PixelShuffle: zero_ops,
     nn.PixelUnshuffle: zero_ops,
     nn.ChannelShuffle: zero_ops,
+    # SiLU/GELU gate the input by a non-multiplying function of itself (x * sigmoid(x), x * Phi(x)): one real
+    # multiply per output element, the same accounting convention count_linear already uses for its own folded-in
+    # adds (README: "counting Multiply-Accumulate Operations") — as opposed to a window/reduction rule like
+    # count_avgpool or count_softmax, which charges every scalar op including adds and divides. Mish and GLU have
+    # the identical x * g(x) shape and Hardswish's tail is the same class of work, but none of the three has a
+    # consumer in ultralytics/nn/ to motivate carrying a formula, so they stay unregistered and warned about — same
+    # as nn.Fold, which sums OVERLAPPING blocks (the window-reduction work count_adap_avgpool charges, not
+    # something a view does) and has no consumer either.
+    nn.SiLU: count_gated_activation,
+    nn.GELU: count_gated_activation,
     # a gather, so it belongs with the block above, but max_norm keeps it out of a blanket zero: that rescale is
     # real work and count_embedding warns rather than assert it away, the way count_upsample does for a mode it has
     # no cost for. nn.EmbeddingBag stays unregistered, since it really does reduce each bag and how many adds that
