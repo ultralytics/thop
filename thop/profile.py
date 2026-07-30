@@ -367,12 +367,16 @@ def profile(
                 nn.GRUCell,
                 nn.LSTMCell,
             )
-            required_samples = 2 if custom_ops or any(isinstance(m, fixed_ops) for m in model.modules()) else 1
+            required_samples = 2 if any(isinstance(m, fixed_ops) for m in model.modules()) else 1
             samples = []
             proxy_area = stride[0] * stride[1]
             if (
-                not any(any(t in custom_ops for t in type(m).__mro__) for m in model.modules())
-                and not any(isinstance(m, nn.MultiheadAttention) for m in model.modules())
+                # two small samples can only fit a cost that is affine in image area. Attention is quadratic in it,
+                # and a caller's own rule may be anything at all, so a model carrying either is measured directly.
+                not any(
+                    isinstance(m, nn.MultiheadAttention) or any(t in custom_ops for t in type(m).__mro__)
+                    for m in model.modules()
+                )
                 and target_height % stride[0] == target_width % stride[1] == 0
                 and proxy_area < target_height * target_width
             ):
