@@ -87,7 +87,7 @@ print(f"Custom MACs: {macs}, Parameters: {params}")
 
 ### Attention Built from `F.scaled_dot_product_attention`
 
-A ViT-style block that computes attention through `F.scaled_dot_product_attention` calls no module thop can hook: the qkv/output projections are still counted as ordinary `nn.Linear` children, but the query-key and attention-value matrix products are not. `count_scaled_dot_product_attention` prices that missing term for a self-attention block; register it against the block's own class the same way as any other custom rule:
+A ViT-style block using PyTorch 2.0+ that computes attention through `F.scaled_dot_product_attention` calls no module thop can hook: the qkv/output projections are still counted as ordinary `nn.Linear` children, but the query-key and attention-value matrix products are not. `count_scaled_dot_product_attention` prices that missing term for a self-attention block; register it against the block's own class the same way as any other custom rule:
 
 ```python
 import torch
