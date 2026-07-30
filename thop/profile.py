@@ -202,6 +202,14 @@ def _displace_total_ops(m):
     return displaced
 
 
+def _warn_late_born(pre_forward_modules, post_forward_modules, warned_types):
+    """Warn once per type about a module that entered the tree only after the forward pass ran."""
+    for m in post_forward_modules - pre_forward_modules:
+        if type(m) not in warned_types:
+            warned_types.add(type(m))
+            prRed(f"[WARN] {type(m)} was created after profiling hooks were installed and was not profiled.")
+
+
 def _restore_modes(prev_training):
     """Restore recorded modes without changing modules attached during forward."""
     order = _parents_first(prev_training)
@@ -247,9 +255,14 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
     try:
         model.eval()
         model.apply(add_hooks)
+        pre_forward_modules = set(model.modules()) if report_missing else None
+        warned_types = set()
 
         with torch.no_grad():
             model(*inputs)
+
+        if report_missing:
+            _warn_late_born(pre_forward_modules, set(model.modules()), warned_types)
 
         total_ops = 0
         for m in handler_collection:
@@ -334,6 +347,8 @@ def profile(
     try:
         model.eval()
         model.apply(add_hooks)
+        pre_forward_modules = set(model.modules()) if report_missing else None
+        warned_types = set()
 
         def run(input_values):
             """Profile one set of inputs while reusing the registered hooks."""
@@ -342,6 +357,8 @@ def profile(
                 m.__dict__["total_ops"] = 0
             with torch.no_grad():
                 model(*input_values)
+            if report_missing:
+                _warn_late_born(pre_forward_modules, set(model.modules()), warned_types)
             # Count the executed hook record; build the surviving tree only when requested.
             total = sum(float(m.__dict__.get("total_ops", 0)) for m in handler_collection)
             return total, dfs_count(model)[1] if ret_layer_info else {}
