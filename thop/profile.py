@@ -224,10 +224,11 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         verbose = True
 
     def add_hooks(m):
-        if (list(m.children()) and not isinstance(m, nn.MultiheadAttention)) or m in handler_collection:
+        m_type = type(m)
+        has_own_rule = any(t in custom_ops or t in register_hooks for t in m_type.__mro__)
+        if (list(m.children()) and not has_own_rule) or m in handler_collection:
             return
 
-        m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
         if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
