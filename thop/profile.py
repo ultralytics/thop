@@ -207,16 +207,15 @@ def _parents_first(roots):
 
 def _displace_total_ops(m):
     """Temporarily remove a caller-owned `total_ops` buffer or attribute; reject a name thop cannot borrow."""
-    for cls in type(m).__mro__:
-        attr = vars(cls).get("total_ops")
-        if attr is not None and hasattr(attr, "__set__"):
-            raise TypeError(
-                f"{m!s} defines total_ops as a {cls.__name__} attribute; thop needs that name to profile it."
-            )
-    if "total_ops" in m._parameters:
-        raise TypeError(f"{m!s} already has a total_ops parameter; thop needs that name to profile it.")
-    if "total_ops" in m._modules:
-        raise TypeError(f"{m!s} already has a total_ops child module; thop needs that name to profile it.")
+    kind = None
+    if any(hasattr(vars(c).get("total_ops"), "__set__") for c in type(m).__mro__):
+        kind = "data descriptor"  # no per-instance value to displace, and the hook's writes never reach the total
+    elif "total_ops" in m._parameters:
+        kind = "parameter"  # displacing it would come back as a smaller parameter count
+    elif "total_ops" in m._modules:
+        kind = "child module"  # displacing it would come back as a dropped subtree
+    if kind:
+        raise TypeError(f"{m!s} owns total_ops as a {kind}; thop needs that name to profile it.")
     displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
     if displaced:
         logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
