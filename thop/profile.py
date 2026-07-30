@@ -67,9 +67,7 @@ register_hooks = {
     nn.ReLU: zero_ops,
     nn.ReLU6: zero_ops,
     nn.LeakyReLU: zero_ops,
-    # the rest of torch.nn's stateless activations that, like LeakyReLU's own negative_slope * x, only ever multiply
-    # by a fixed, data-independent scalar (alpha/beta/lambda) or do no multiply at all (compare/select/exp/log) —
-    # SiLU/GELU below are the two that gate by a genuine per-element function of the input instead.
+    # LeakyReLU-shaped: a fixed-scalar multiply or none at all. SiLU/GELU below gate by a function of x instead.
     nn.ELU: zero_ops,
     nn.CELU: zero_ops,
     nn.SELU: zero_ops,
@@ -126,14 +124,8 @@ register_hooks = {
     nn.PixelShuffle: zero_ops,
     nn.PixelUnshuffle: zero_ops,
     nn.ChannelShuffle: zero_ops,
-    # SiLU/GELU gate the input by a non-multiplying function of itself (x * sigmoid(x), x * Phi(x)): one real
-    # multiply per output element, the same accounting convention count_linear already uses for its own folded-in
-    # adds (README: "counting Multiply-Accumulate Operations") — as opposed to a window/reduction rule like
-    # count_avgpool or count_softmax, which charges every scalar op including adds and divides. Mish and GLU have
-    # the identical x * g(x) shape and Hardswish's tail is the same class of work, but none of the three has a
-    # consumer in ultralytics/nn/ to motivate carrying a formula, so they stay unregistered and warned about — same
-    # as nn.Fold, which sums OVERLAPPING blocks (the window-reduction work count_adap_avgpool charges, not
-    # something a view does) and has no consumer either.
+    # x * g(x) gate: one multiply per output element. Mish/GLU/Hardswish (same shape) and nn.Fold have no consumer
+    # in ultralytics/nn/, so they stay unregistered and warned about.
     nn.SiLU: count_gated_activation,
     nn.GELU: count_gated_activation,
     # a gather, so it belongs with the block above, but max_norm keeps it out of a blanket zero: that rescale is
