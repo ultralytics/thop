@@ -175,6 +175,17 @@ def count_bilinear(m, x, y):
     m.total_ops += calculate_linear((m.in1_features + 1) * m.in2_features, y.numel())
 
 
+def count_cosine_similarity(m, x, y):
+    """Count the dot product and the two norms each output element reduces."""
+    m.total_ops += calculate_linear(3 * torch.broadcast_shapes(x[0].shape, x[1].shape)[m.dim], y.numel())
+
+
+def count_pairwise_distance(m, x, y):
+    """Count the square each difference of an L2 distance takes."""
+    if m.norm == 2:  # the only norm whose per-element operation is a multiply
+        m.total_ops += calculate_linear(torch.broadcast_shapes(x[0].shape, x[1].shape)[-1], y.numel())
+
+
 def count_multihead_attention(m: nn.MultiheadAttention, x, y):
     """Count projections, attention matrix products, and softmax.
 
