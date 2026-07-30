@@ -197,3 +197,14 @@ def count_multihead_attention(m: nn.MultiheadAttention, x, y):
     attention = 2 * tgt_len * attended * m.embed_dim
     softmax = calculate_softmax(batch_size * m.num_heads * tgt_len, attended)
     m.total_ops += batch_size * (projections + attention) + softmax
+
+
+def count_scaled_dot_product_attention(m, x, y):
+    """Count the query-key and attention-value matrix products of an F.scaled_dot_product_attention block.
+
+    Registered per class via custom_ops: the functional call has no owning module for add_hooks to reach, while the
+    block's own qkv/output nn.Linear children are already counted. Assumes self-attention, reading the shared token
+    count from the block's own input; omits softmax, which needs num_heads and no generic block guarantees one.
+    """
+    tokens, dim = x[0].shape[-2:]
+    m.total_ops += l_prod(x[0].shape[:-2]) * 2 * tokens * tokens * dim

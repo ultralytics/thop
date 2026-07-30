@@ -85,6 +85,41 @@ print(f"Custom MACs: {macs}, Parameters: {params}")
 # Expected output: Custom MACs: 89915392.0, Parameters: 1792.0
 ```
 
+### Attention Built from `F.scaled_dot_product_attention`
+
+A ViT-style block that computes attention through `F.scaled_dot_product_attention` calls no module thop can hook: the qkv/output projections are still counted as ordinary `nn.Linear` children, but the query-key and attention-value matrix products are not. `count_scaled_dot_product_attention` prices that missing term for a self-attention block; register it against the block's own class the same way as any other custom rule:
+
+```python
+import torch
+import torch.nn.functional as F
+from thop import profile
+from thop.vision.basic_hooks import count_scaled_dot_product_attention
+from torch import nn
+
+
+class Attention(nn.Module):
+    def __init__(self, dim=384, num_heads=6):
+        super().__init__()
+        self.num_heads = num_heads
+        self.qkv = nn.Linear(dim, dim * 3)
+        self.proj = nn.Linear(dim, dim)
+
+    def forward(self, x):
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv.unbind(0)
+        x = F.scaled_dot_product_attention(q, k, v).transpose(1, 2).reshape(B, N, C)
+        return self.proj(x)
+
+
+model = Attention(384, 6)
+inputs = (torch.randn(1, 256, 384),)
+macs, params = profile(model, inputs=inputs, custom_ops={Attention: count_scaled_dot_product_attention})
+
+print(f"MACs: {macs}, Parameters: {params}")
+# Expected output: MACs: 201326592.0, Parameters: 591360.0
+```
+
 ### Improve Output Readability
 
 Use `clever_format()` to convert raw counts into human-readable values:
