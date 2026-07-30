@@ -17,6 +17,7 @@ from thop.vision.basic_hooks import (
     count_bilinear,
     count_convNd,
     count_convtNd,
+    count_embedding,
     count_linear,
     count_multihead_attention,
     count_normalization,
@@ -104,9 +105,8 @@ register_hooks = {
     nn.PixelShuffle: zero_ops,
     nn.PixelUnshuffle: zero_ops,
     nn.ChannelShuffle: zero_ops,
-    # max_norm norms the touched rows and rescales only those over the limit, so its cost follows the data.
     # nn.EmbeddingBag stays unregistered: padding_idx drops entries and repeated offsets make empty bags.
-    nn.Embedding: zero_ops,
+    nn.Embedding: count_embedding,
 }
 
 if _HOOK_TAKES_KWARGS:
