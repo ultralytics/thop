@@ -18,6 +18,8 @@ from thop.vision.basic_hooks import (
     count_convNd,
     count_convtNd,
     count_linear,
+    count_lp_pool,
+    count_lrn,
     count_multihead_attention,
     count_normalization,
     count_prelu,
@@ -56,6 +58,8 @@ register_hooks = {
     nn.modules.batchnorm._NormBase: count_normalization,
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
+    nn.LocalResponseNorm: count_lrn,
+    nn.CrossMapLRN2d: count_lrn,  # the legacy spelling, same arithmetic and same four arguments
     nn.PReLU: count_prelu,
     # The softmax family shares no base, so each member is registered explicitly.
     nn.Softmax: count_softmax,
@@ -79,6 +83,7 @@ register_hooks = {
     nn.AdaptiveAvgPool1d: count_adap_avgpool,
     nn.AdaptiveAvgPool2d: count_adap_avgpool,
     nn.AdaptiveAvgPool3d: count_adap_avgpool,
+    nn.modules.pooling._LPPoolNd: count_lp_pool,
     nn.Linear: count_linear,
     nn.Bilinear: count_bilinear,
     nn.Upsample: count_upsample,
