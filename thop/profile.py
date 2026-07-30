@@ -371,7 +371,8 @@ def profile(
             samples = []
             proxy_area = stride[0] * stride[1]
             if (
-                not any(isinstance(m, nn.MultiheadAttention) for m in model.modules())
+                not custom_ops
+                and not any(isinstance(m, nn.MultiheadAttention) for m in model.modules())
                 and target_height % stride[0] == target_width % stride[1] == 0
                 and proxy_area < target_height * target_width
             ):
