@@ -57,7 +57,9 @@ register_hooks = {
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
     nn.PReLU: count_prelu,
-    # The softmax family shares no base, so each member is registered explicitly.
+    # The softmax family shares no base, so each member is registered explicitly. nn.AdaptiveLogSoftmaxWithLoss
+    # is left out: its forward takes the targets and computes only the clusters they route to, so its cost is
+    # not a function of the input shape. Its head and tail projections are nn.Linear children and count already.
     nn.Softmax: count_softmax,
     nn.LogSoftmax: count_softmax,
     nn.Softmin: count_softmax,
