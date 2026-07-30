@@ -126,24 +126,21 @@ def count_avgpool(m, x, y):
 
 def count_lp_pool(m, x, y):
     """Calculate and update the total operation count for an Lp pool layer."""
-    if abs(float(m.norm_type)) == float("inf"):  # torch coerces the norm, and "inf" reaches its max-pool path
-        return  # that path is a max pool over absolute values, which selects rather than computes
-    # nn.LPPool3d arrived after the torch 1.8 floor, so the three-dimensional case is the fall-through
-    dims = 1 if isinstance(m, nn.LPPool1d) else 2 if isinstance(m, nn.LPPool2d) else 3
+    if abs(float(m.norm_type)) == float("inf"):  # float() because torch accepts a string norm
+        return  # that norm is a max pool over absolute values, which selects rather than computes
+    dims = 1 if isinstance(m, nn.LPPool1d) else 2 if isinstance(m, nn.LPPool2d) else 3  # 3d postdates the floor
     kernel = (m.kernel_size,) * dims if isinstance(m.kernel_size, int) else m.kernel_size
     stride = kernel if m.stride is None else (m.stride,) * dims if isinstance(m.stride, int) else m.stride
     windows = 1
     for size, output, k, s in zip(x[0].shape[-dims:], y.shape[-dims:], kernel, stride):
         windows *= sum(min(i * s + k, size) - i * s for i in range(output))  # Lp pooling never pads
-    # one power per input and one add per input the windows read, then per output the window's divide, the
-    # multiply by the sign, the multiply by the kernel area and the p-th root
+    # a power per input, an add per input a window reads, then the divide, both multiplies and the root per output
     m.total_ops += x[0].numel() + l_prod(x[0].shape[:-dims]) * windows + 4 * y.numel()
 
 
 def count_lrn(m, x, y):
     """Calculate and update the total operation count for a local response normalization layer."""
-    # one square per element and `size` window adds, then the window's divide, the alpha multiply, the k add,
-    # the beta power and the final divide
+    # a square per element, `size` window adds, then the divide, the alpha multiply, the k add, a power, a divide
     m.total_ops += x[0].numel() * (m.size + 6)
 
 

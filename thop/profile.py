@@ -59,7 +59,7 @@ register_hooks = {
     nn.LayerNorm: count_normalization,
     nn.GroupNorm: count_normalization,
     nn.LocalResponseNorm: count_lrn,
-    nn.CrossMapLRN2d: count_lrn,  # the legacy spelling, same arithmetic and same four arguments
+    nn.CrossMapLRN2d: count_lrn,  # the legacy spelling, same arithmetic
     nn.PReLU: count_prelu,
     # The softmax family shares no base, so each member is registered explicitly.
     nn.Softmax: count_softmax,
