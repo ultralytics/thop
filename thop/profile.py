@@ -92,7 +92,6 @@ register_hooks = {
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
     # containers hold children and compute nothing themselves; they share no base but nn.Module.
-    # nn.Container is left out: it is deprecated into a plain nn.Module, so a subclass of it computes.
     nn.Sequential: zero_ops,
     nn.ModuleList: zero_ops,
     nn.ModuleDict: zero_ops,
