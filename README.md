@@ -92,9 +92,10 @@ A ViT-style block that computes attention through `F.scaled_dot_product_attentio
 ```python
 import torch
 import torch.nn.functional as F
+from torch import nn
+
 from thop import profile
 from thop.vision.basic_hooks import count_scaled_dot_product_attention
-from torch import nn
 
 
 class Attention(nn.Module):
