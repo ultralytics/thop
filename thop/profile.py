@@ -17,6 +17,7 @@ from thop.vision.basic_hooks import (
     count_bilinear,
     count_convNd,
     count_convtNd,
+    count_embedding,
     count_linear,
     count_multihead_attention,
     count_normalization,
@@ -73,6 +74,7 @@ register_hooks = {
     nn.AdaptiveMaxPool3d: zero_ops,
     nn.FractionalMaxPool2d: zero_ops,  # a max pool that picks its windows randomly still only selects
     nn.FractionalMaxPool3d: zero_ops,
+    nn.modules.pooling._MaxUnpoolNd: zero_ops,  # scattering into a larger zero tensor adds nothing
     nn.AvgPool1d: count_avgpool,
     nn.AvgPool2d: count_avgpool,
     nn.AvgPool3d: count_avgpool,
@@ -90,7 +92,12 @@ register_hooks = {
     nn.RNN: count_rnn,
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
+    # containers hold children and compute nothing themselves; they share no base but nn.Module.
     nn.Sequential: zero_ops,
+    nn.ModuleList: zero_ops,
+    nn.ModuleDict: zero_ops,
+    nn.ParameterList: zero_ops,
+    nn.ParameterDict: zero_ops,
     # layers that only move elements around: a view, a re-index or a permutation reads and writes each
     # element once and multiplies nothing. The elementwise activations that also reach no rule are left
     # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
@@ -104,6 +111,11 @@ register_hooks = {
     nn.PixelShuffle: zero_ops,
     nn.PixelUnshuffle: zero_ops,
     nn.ChannelShuffle: zero_ops,
+    # a gather, so it belongs with the block above, but max_norm keeps it out of a blanket zero: that rescale is
+    # real work and count_embedding warns rather than assert it away, the way count_upsample does for a mode it has
+    # no cost for. nn.EmbeddingBag stays unregistered, since it really does reduce each bag and how many adds that
+    # takes is not a function of shape either: padding_idx entries drop out and repeated offsets make empty bags.
+    nn.Embedding: count_embedding,
 }
 
 if _HOOK_TAKES_KWARGS:
@@ -235,10 +247,11 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         verbose = True
 
     def add_hooks(m):
-        if (list(m.children()) and not isinstance(m, nn.MultiheadAttention)) or m in handler_collection:
+        m_type = type(m)
+        has_own_rule = any(t in custom_ops or t in register_hooks for t in m_type.__mro__)
+        if (list(m.children()) and not has_own_rule) or m in handler_collection:
             return
 
-        m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
         displaced = _displace_total_ops(m)
@@ -380,11 +393,16 @@ def profile(
                 nn.GRUCell,
                 nn.LSTMCell,
             )
-            required_samples = 2 if custom_ops or any(isinstance(m, fixed_ops) for m in model.modules()) else 1
+            required_samples = 2 if any(isinstance(m, fixed_ops) for m in model.modules()) else 1
             samples = []
             proxy_area = stride[0] * stride[1]
             if (
-                not any(isinstance(m, nn.MultiheadAttention) for m in model.modules())
+                # two small samples can only fit a cost that is affine in image area. Attention is quadratic in it,
+                # and a caller's own rule may be anything at all, so a model carrying either is measured directly.
+                not any(
+                    isinstance(m, nn.MultiheadAttention) or any(t in custom_ops for t in type(m).__mro__)
+                    for m in model.modules()
+                )
                 and target_height % stride[0] == target_width % stride[1] == 0
                 and proxy_area < target_height * target_width
             ):
