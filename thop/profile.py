@@ -194,11 +194,22 @@ def _parents_first(roots):
 
 
 def _displace_total_ops(m):
-    """Temporarily remove a caller-owned `total_ops` attribute or buffer."""
+    """Temporarily remove a caller-owned `total_ops` buffer or attribute; reject a name thop cannot borrow."""
+    for cls in type(m).__mro__:
+        attr = vars(cls).get("total_ops")
+        if attr is not None and hasattr(attr, "__set__"):
+            raise TypeError(
+                f"{m!s} defines total_ops as a {cls.__name__} attribute; thop needs that name to profile it."
+            )
+    if "total_ops" in m._parameters:
+        raise TypeError(f"{m!s} already has a total_ops parameter; thop needs that name to profile it.")
+    if "total_ops" in m._modules:
+        raise TypeError(f"{m!s} already has a total_ops child module; thop needs that name to profile it.")
     displaced = [(store, store["total_ops"]) for store in (m._buffers, m.__dict__) if "total_ops" in store]
-    logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
-    for store, _ in displaced:
-        del store["total_ops"]
+    if displaced:
+        logging.warning(f"{m!s} already has a .total_ops; it is shadowed while profiling and restored after.")
+        for store, _ in displaced:
+            del store["total_ops"]
     return displaced
 
 
@@ -230,8 +241,9 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
-        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
-            displaced_collection[m] = _displace_total_ops(m)
+        displaced = _displace_total_ops(m)
+        if displaced:
+            displaced_collection[m] = displaced
         # register_buffer discards this flag; restore it without requiring the newer persistent= argument.
         non_persistent = "total_ops" in m._non_persistent_buffers_set
         m.register_buffer("total_ops", torch.zeros(1, dtype=default_dtype))
@@ -297,8 +309,9 @@ def profile(
         m_type = type(m)
         fn = _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing)
 
-        if "total_ops" in m.__dict__ or "total_ops" in m._buffers:
-            displaced_collection[m] = _displace_total_ops(m)
+        displaced = _displace_total_ops(m)
+        if displaced:
+            displaced_collection[m] = displaced
         # a plain int attribute, not a float64 buffer: buffer reads go through nn.Module.__getattr__ and every
         # hook would allocate a tensor per call, which dominates profiling cost on module-heavy models.
         # Written straight into __dict__ (mirroring the teardown below) to skip nn.Module.__setattr__.
