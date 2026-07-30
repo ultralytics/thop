@@ -91,6 +91,10 @@ register_hooks = {
     nn.GRU: count_gru,
     nn.LSTM: count_lstm,
     nn.Sequential: zero_ops,
+    # a process wrapper, not a container: it runs the wrapped module in place and adds gradient
+    # synchronization, which the package does not count. The wrapped module is an ordinary submodule
+    # that add_hooks already reaches on its own.
+    nn.parallel.DistributedDataParallel: zero_ops,
     # layers that only move elements around: a view, a re-index or a permutation reads and writes each
     # element once and multiplies nothing. The elementwise activations that also reach no rule are left
     # warned about on purpose, because registering one asserts it is free and SiLU, Mish, GELU, GLU and
