@@ -176,14 +176,17 @@ def count_bilinear(m, x, y):
 
 
 def count_cosine_similarity(m, x, y):
-    """Count the dot product and the two norms each output element reduces."""
-    m.total_ops += calculate_linear(3 * torch.broadcast_shapes(x[0].shape, x[1].shape)[m.dim], y.numel())
+    """Count the dot product and the two norms every input element is read into."""
+    # Both reductions run over one axis of the broadcast inputs, so each of their elements is multiplied
+    # exactly once per reduction and neither rule needs to know which axis that is. torch 1.8 and 1.9
+    # reduce a pairwise distance over axis 1 where later versions take the innermost one.
+    m.total_ops += 3 * l_prod(torch.broadcast_shapes(x[0].shape, x[1].shape))
 
 
 def count_pairwise_distance(m, x, y):
-    """Count the square each difference of an L2 distance takes."""
+    """Count the square every difference of an L2 distance takes."""
     if m.norm == 2:  # the only norm whose per-element operation is a multiply
-        m.total_ops += calculate_linear(torch.broadcast_shapes(x[0].shape, x[1].shape)[-1], y.numel())
+        m.total_ops += l_prod(torch.broadcast_shapes(x[0].shape, x[1].shape))
 
 
 def count_multihead_attention(m: nn.MultiheadAttention, x, y):
