@@ -2,6 +2,8 @@
 
 This file provides guidance to AI coding agents (Claude Code, etc.) when working with code in this repository. CLAUDE.md is a symlink to this file.
 
+THOP (`ultralytics-thop` on PyPI, imported as `thop`, AGPL-3.0) is a PyTorch model profiler that computes MACs and parameter counts to measure deep learning model complexity. Supported Python versions are 3.8 through 3.14.
+
 ## Core Principles (CRITICAL)
 
 **Less is more. The simplest solution is the best solution.** The action hierarchy for every change: **Delete > Replace > Add**.
@@ -44,13 +46,13 @@ python -m pytest tests/test_conv2d.py::TestUtils::test_conv2d_no_bias
 # Format/lint — the main Ruff/Prettier steps from ultralytics/actions@main invoked by format.yml (its action.yml is
 # the source of truth; CI additionally runs docstring and Markdown code-block formatters, and its auto-format commit
 # on the PR covers anything missed locally)
-ruff check --fix --unsafe-fixes --extend-select F,I,D,UP,RUF,FA --target-version py39 --ignore D100,D104,D203,D205,D212,D213,D401,D406,D407,D413,RUF001,RUF002,RUF012 .
+ruff check --fix --unsafe-fixes --extend-select F,I,D,UP,RUF,FA --target-version py38 --ignore BLE001,D100,D104,D203,D205,D212,D213,D401,D406,D407,D413,RUF001,RUF002,RUF012,S110 .
 ruff format --line-length 120 .
 npx prettier --write --print-width 120 "**/*.{yml,yaml,json,md}"
 ```
 
 - `ci.yml` runs `tests/` on every pull request, on pushes to `main`, and nightly, at the `requires-python` floor (Python 3.8 with torch 1.8.0) and at the ceiling (3.14, latest torch) — run them locally before pushing all the same. Coverage is not measured, and `publish.yml` (PyPI release) is gated on the version bump alone, so a release does not imply a green suite; the other workflows are `format.yml` (autoformat + AI labels/summaries on PRs) and `cla.yml` (CLA signing).
-- `requires-python = ">=3.8"` in pyproject.toml; classifiers cover Python 3.8–3.14. The `--target-version py39` above intentionally matches CI (ultralytics/actions uses py39 for pyupgrade), so don't accept pyupgrade fixes that would break Python 3.8 syntax support.
+- `requires-python = ">=3.8"` in pyproject.toml; classifiers cover Python 3.8–3.14. The `--target-version py38` above matches CI (ultralytics/actions targets py38 for pyupgrade), which keeps pyupgrade from rewriting code into syntax that breaks Python 3.8.
 
 ## Architecture
 
