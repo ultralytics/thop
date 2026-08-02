@@ -34,7 +34,8 @@ After opening a PR:
 # Install in editable mode (deps: numpy, torch)
 uv pip install -e .
 
-# Test deps (tests need pytest; benchmark scripts also need torchvision)
+# Test deps (tests need pytest; the README examples need torchvision;
+# benchmark/evaluate_famous_models.py hard-requires ultralytics==8.4.106)
 uv pip install pytest torchvision
 
 # Run all tests
@@ -56,7 +57,7 @@ npx prettier --write --print-width 120 "**/*.{yml,yaml,json,md}"
 
 ## Architecture
 
-THOP (PyPI package `ultralytics-thop`, import name `thop`) computes MACs of PyTorch models via forward hooks, and parameter counts from the module tree. `thop/profile.py` holds the `register_hooks` dict mapping `nn.Module` types to counting functions and exposes the two entry points: `profile()` (DFS traversal that counts each leaf module once) and the legacy `profile_origin()`. Counting functions live in `thop/vision/basic_hooks.py` (formulas in `thop/vision/calc_func.py`) and `thop/rnn_hooks.py` for RNN/GRU/LSTM; `thop/utils.py` provides `clever_format`. `benchmark/` scripts regenerate the README results table.
+THOP (PyPI package `ultralytics-thop`, import name `thop`) computes MACs of PyTorch models via forward hooks, and parameter counts from the module tree. `thop/profile.py` holds the `register_hooks` dict mapping `nn.Module` types to counting functions and exposes the two entry points: `profile()` (hooks every module via `model.apply(add_hooks)` and sums each hooked module's `total_ops` once — `dfs_count` runs only to build the per-layer tree when `ret_layer_info=True`) and the legacy `profile_origin()` (which does skip non-leaf modules that carry no rule of their own). Counting functions live in `thop/vision/basic_hooks.py` (formulas in `thop/vision/calc_func.py`) and `thop/rnn_hooks.py` for RNN/GRU/LSTM; `thop/utils.py` provides `clever_format`. `benchmark/` scripts regenerate the README results table.
 
 `profile()` accumulates into a plain `total_ops` int written straight into each module's `__dict__` (`profile_origin()` still uses a float64 `register_buffer`), so a rule adds into `m.total_ops` — a plain number is cheapest, and a one-element tensor works too because the traversal reduces it with `float()`. Parameter counts are not hooked: both entry points read them from `nn.Module.parameters()`, which deduplicates shared weights and covers module types that have no counting rule. With `ret_layer_info=True` each node reports the parameters its own subtree holds, deduplicated within that node but not across nodes.
 
