@@ -1,6 +1,6 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-# Publish pip package to PyPI https://pypi.org/project/ultralytics/ and Docs to https://docs.ultralytics.com
+# Publish pip package to PyPI https://pypi.org/project/ultralytics-thop/
 
 # Overview:
 # This `pyproject.toml` file manages the build, packaging, and distribution of the `thop` library. 
