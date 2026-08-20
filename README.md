@@ -1,16 +1,16 @@
-<a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
+<a href="https://www.ultralytics.com"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 # 🚀 THOP: PyTorch-OpCounter
 
-[THOP](https://github.com/ultralytics/thop) profiles [PyTorch](https://pytorch.org/) models by counting Multiply-Accumulate Operations (MACs) and parameters. It is lightweight, easy to extend, and maintained by [Ultralytics](https://www.ultralytics.com/).
+[THOP](https://github.com/ultralytics/thop) profiles [PyTorch](https://pytorch.org/) models by counting Multiply-Accumulate Operations (MACs) and parameters. It is lightweight, easy to extend, and maintained by [Ultralytics](https://www.ultralytics.com).
 
 [![THOP CI](https://github.com/ultralytics/thop/actions/workflows/ci.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/ci.yml)
 [![Ultralytics Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
-[![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
-[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://reddit.com/r/ultralytics)
+[![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com)
+[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
 ## 📄 Description
 
@@ -145,7 +145,7 @@ Ultralytics offers two licensing options to suit different needs:
 
 ## 📞 Contact
 
-For bug reports and feature requests related to THOP, please visit [GitHub Issues](https://github.com/ultralytics/thop/issues). For questions, discussions, and community support, join our active communities on [Discord](https://discord.com/invite/ultralytics), [Reddit](https://www.reddit.com/r/ultralytics/), and the [Ultralytics Community Forums](https://community.ultralytics.com/). We're here to help with all things Ultralytics!
+For bug reports and feature requests related to THOP, please visit [GitHub Issues](https://github.com/ultralytics/thop/issues). For questions, discussions, and community support, join our active communities on [Discord](https://discord.com/invite/ultralytics), [Reddit](https://www.reddit.com/r/ultralytics/), and the [Ultralytics Community Forums](https://community.ultralytics.com). We're here to help with all things Ultralytics!
 
 <br>
 <div align="center">

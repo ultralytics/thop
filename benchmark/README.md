@@ -1,8 +1,8 @@
-<a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
+<a href="https://www.ultralytics.com"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
 
 # Understanding FLOPs vs. MACs in Model Benchmarking
 
-When evaluating the computational cost of [deep learning](https://www.ultralytics.com/glossary/deep-learning-dl) models like [Ultralytics YOLOv8](https://docs.ultralytics.com/models/yolov8/), two common metrics often arise: FLOPs and MACs. Understanding the distinction between them is crucial for accurate model [benchmarking](https://docs.ultralytics.com/modes/benchmark/) and comparison, helping you choose the right model for your hardware and latency requirements.
+When evaluating the computational cost of [deep learning](https://www.ultralytics.com/glossary/deep-learning-dl) models like [Ultralytics YOLOv8](https://docs.ultralytics.com/models/yolov8), two common metrics often arise: FLOPs and MACs. Understanding the distinction between them is crucial for accurate model [benchmarking](https://docs.ultralytics.com/modes/benchmark) and comparison, helping you choose the right model for your hardware and latency requirements.
 
 ## 📊 Defining FLOPs and MACs
 
@@ -35,8 +35,8 @@ Therefore, in the context of `thop` and similar benchmarking tools:
 - **MACs** generally represent the count of multiply-accumulate operations, with the count heavily influenced by the number of multiplications in layers like `Conv2d` and `Linear`.
 - **FLOPs** are often _approximated_ by multiplying the calculated MAC count by two, adhering to the common `1 MAC ≈ 2 FLOPs` heuristic.
 
-This approach provides a standardized and reproducible way to compare the theoretical computational demands of different models, aiding in architectural design choices and high-level efficiency analysis. However, for precise performance evaluation and optimization on specific target hardware, direct [benchmarking](https://docs.ultralytics.com/modes/benchmark/) remains the most reliable method. Explore resources like [understanding GPU performance for deep learning](https://timdettmers.com/2023/01/30/which-gpu-for-deep-learning/) for deeper insights into hardware-specific considerations.
+This approach provides a standardized and reproducible way to compare the theoretical computational demands of different models, aiding in architectural design choices and high-level efficiency analysis. However, for precise performance evaluation and optimization on specific target hardware, direct [benchmarking](https://docs.ultralytics.com/modes/benchmark) remains the most reliable method. Explore resources like [understanding GPU performance for deep learning](https://timdettmers.com/2023/01/30/which-gpu-for-deep-learning/) for deeper insights into hardware-specific considerations.
 
 ## 🤝 Contributing
 
-Contributions to improve this documentation or the underlying library are always welcome! If you have suggestions or find inaccuracies, please open an issue or pull request in the [THOP repository](https://github.com/ultralytics/thop). We appreciate your help in making our tools and resources better for the entire computer vision community. Check out our [contribution guide](https://docs.ultralytics.com/help/contributing/) for more detailed information on how to get involved.
+Contributions to improve this documentation or the underlying library are always welcome! If you have suggestions or find inaccuracies, please open an issue or pull request in the [THOP repository](https://github.com/ultralytics/thop). We appreciate your help in making our tools and resources better for the entire computer vision community. Check out our [contribution guide](https://docs.ultralytics.com/help/contributing) for more detailed information on how to get involved.

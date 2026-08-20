@@ -1,16 +1,16 @@
-<a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
+<a href="https://www.ultralytics.com"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 # 🚀 THOP：PyTorch 运算量分析工具
 
-[THOP](https://github.com/ultralytics/thop) 用于分析 [PyTorch](https://pytorch.org/) 模型的乘加运算次数（MACs）和参数量。它轻量、易扩展，并由 [Ultralytics](https://www.ultralytics.com/) 维护。
+[THOP](https://github.com/ultralytics/thop) 用于分析 [PyTorch](https://pytorch.org/) 模型的乘加运算次数（MACs）和参数量。它轻量、易扩展，并由 [Ultralytics](https://www.ultralytics.com) 维护。
 
 [![THOP CI](https://github.com/ultralytics/thop/actions/workflows/ci.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/ci.yml)
 [![Ultralytics Actions](https://github.com/ultralytics/thop/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/thop/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
-[![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
-[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://reddit.com/r/ultralytics)
+[![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com)
+[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
 ## 📄 简介
 
@@ -144,7 +144,7 @@ Ultralytics 提供两种许可选项以满足不同需求：
 
 ## 📞 联系方式
 
-有关 THOP 的错误报告和功能请求，请访问 [GitHub Issues](https://github.com/ultralytics/thop/issues)。如有疑问、讨论和社区支持，请加入我们在 [Discord](https://discord.com/invite/ultralytics)、[Reddit](https://www.reddit.com/r/ultralytics/) 和 [Ultralytics 社区论坛](https://community.ultralytics.com/)上的活跃社区。我们随时为您提供有关 Ultralytics 的所有帮助！
+有关 THOP 的错误报告和功能请求，请访问 [GitHub Issues](https://github.com/ultralytics/thop/issues)。如有疑问、讨论和社区支持，请加入我们在 [Discord](https://discord.com/invite/ultralytics)、[Reddit](https://www.reddit.com/r/ultralytics/) 和 [Ultralytics 社区论坛](https://community.ultralytics.com)上的活跃社区。我们随时为您提供有关 Ultralytics 的所有帮助！
 
 <br>
 <div align="center">
