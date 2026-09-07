@@ -6,8 +6,6 @@ THOP (`ultralytics-thop` on PyPI, imported as `thop`, AGPL-3.0) is a PyTorch mod
 
 ## Core Principles (CRITICAL)
 
-**PyPI releases:** Ultralytics-owned packages must use three-number `MAJOR.MINOR.PATCH` versions only; increment the patch number, never add suffixes or bypass version guards.
-
 **Less is more. The simplest solution is the best solution.** The action hierarchy for every change: **Delete > Replace > Add**.
 
 1. **Solve at the owner**: Put behavior in the code path that owns or observes it. For fixes, never guard a symptom with a staleness check, initialization flag, skip-first-call branch, or `try/except` around broken logic; relocate the trigger and delete the wrong path. For features, extend the existing owner rather than creating a parallel abstraction.
@@ -67,6 +65,7 @@ Releases are gated in `publish.yml`: it runs on every push to main but only for 
 
 ## Conventions
 
+- Ultralytics-owned PyPI packages use `MAJOR.MINOR.PATCH` versions only; no suffixes.
 - Every source file starts with the header `# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license` — Ultralytics Actions adds it automatically; don't add or revert it manually.
 - Ruff formatting at line length 120 with Google-style docstrings (single-line imperative summaries); Prettier at print width 120 for YAML/JSON/Markdown — all applied automatically by `format.yml` on PRs.
 - Tests are plain pytest with class-based grouping (each file wraps tests in a `TestUtils` class) and exact-value asserts on op counts; there is no conftest or pytest config, and no test hits the network.
