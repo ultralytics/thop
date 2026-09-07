@@ -65,6 +65,7 @@ Releases are gated in `publish.yml`: it runs on every push to main but only for 
 
 ## Conventions
 
+- Ultralytics-owned PyPI packages use `MAJOR.MINOR.PATCH` versions only; no suffixes.
 - Every source file starts with the header `# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license` — Ultralytics Actions adds it automatically; don't add or revert it manually.
 - Ruff formatting at line length 120 with Google-style docstrings (single-line imperative summaries); Prettier at print width 120 for YAML/JSON/Markdown — all applied automatically by `format.yml` on PRs.
 - Tests are plain pytest with class-based grouping (each file wraps tests in a `TestUtils` class) and exact-value asserts on op counts; there is no conftest or pytest config, and no test hits the network.
