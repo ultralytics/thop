@@ -408,7 +408,7 @@ def profile(
                 except Exception:
                     ops.clear()
 
-            if ops and (len(ops) < 4 or abs(ops[3] - 3 * ops[2] + 3 * ops[1] - ops[0]) <= 1e-9 * abs(ops[3])):
+            if ops and (len(ops) < 4 or ops[3] - 3 * ops[2] + 3 * ops[1] - ops[0] == 0):
                 # Newton forward differences in k; a single spatial-only sample is proportional, i.e. zero at k=0
                 d1 = ops[1] - ops[0] if len(ops) > 1 else ops[0]
                 d2 = ops[2] - 2 * ops[1] + ops[0] if len(ops) > 2 else 0.0
