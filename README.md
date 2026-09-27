@@ -52,7 +52,8 @@ print(f"MACs: {macs}, Parameters: {params}")
 
 For image models, pass the target-size input and the model stride to estimate MACs from smaller stride-aligned
 profiles. `profile()` retains a single-profile fast path for spatial-only models, fits two points when size-independent
-operations may be present, and falls back to the target input when the smaller inputs are unsuitable:
+operations may be present, fits three points and checks a fourth when attention or `custom_ops` may make the cost
+quadratic in image area, and falls back to the target input when the smaller inputs are unsuitable:
 
 ```python
 inputs = (torch.randn(1, 3, 640, 640),)

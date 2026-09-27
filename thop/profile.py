@@ -392,34 +392,27 @@ def profile(
                 nn.GRUCell,
                 nn.LSTMCell,
             )
-            required_samples = 2 if any(isinstance(m, fixed_ops) for m in model.modules()) else 1
-            samples = []
-            proxy_area = stride[0] * stride[1]
-            if (
-                # two small samples can only fit a cost that is affine in image area. Attention is quadratic in it,
-                # and a caller's own rule may be anything at all, so a model carrying either is measured directly.
-                not any(
-                    isinstance(m, nn.MultiheadAttention) or any(t in custom_ops for t in type(m).__mro__)
-                    for m in model.modules()
-                )
-                and target_height % stride[0] == target_width % stride[1] == 0
-                and proxy_area < target_height * target_width
-            ):
+            # Attention is quadratic in image area and a caller's own rule may be anything, so a model carrying either
+            # fits a quadratic through three proxies and checks it against a fourth, measuring directly on a mismatch.
+            quadratic = any(
+                isinstance(m, nn.MultiheadAttention) or any(t in custom_ops for t in type(m).__mro__)
+                for m in model.modules()
+            )
+            required_samples = 4 if quadratic else 2 if any(isinstance(m, fixed_ops) for m in model.modules()) else 1
+            cells = (target_height // stride[0]) * (target_width // stride[1])  # proxy k is k stride cells wide
+            ops = []
+            if target_height % stride[0] == target_width % stride[1] == 0 and cells > required_samples:
                 try:
-                    for width in (stride[1], stride[1] * 2)[:required_samples]:
-                        ops, _ = run((image.new_empty((*image.shape[:-2], stride[0], width)),))
-                        samples.append((stride[0] * width, ops))
+                    for k in range(1, required_samples + 1):
+                        ops.append(run((image.new_empty((*image.shape[:-2], stride[0], stride[1] * k)),))[0])
                 except Exception:
-                    samples.clear()
+                    ops.clear()
 
-            if len(samples) == 2:
-                (area1, ops1), (area2, ops2) = samples
-                slope = (ops2 - ops1) / (area2 - area1)
-                total_ops = slope * target_height * target_width + ops1 - slope * area1
-                ret_dict = {}
-            elif len(samples) == 1 and required_samples == 1:
-                area, ops = samples[0]
-                total_ops = ops * target_height * target_width / area
+            if ops and (len(ops) < 4 or abs(ops[3] - 3 * ops[2] + 3 * ops[1] - ops[0]) <= 1e-9 * abs(ops[3])):
+                # Newton forward differences in k; a single spatial-only sample is proportional, i.e. zero at k=0
+                d1 = ops[1] - ops[0] if len(ops) > 1 else ops[0]
+                d2 = ops[2] - 2 * ops[1] + ops[0] if len(ops) > 2 else 0.0
+                total_ops = ops[0] + (cells - 1) * d1 + (cells - 1) * (cells - 2) // 2 * d2
                 ret_dict = {}
             else:
                 total_ops, ret_dict = run(inputs)

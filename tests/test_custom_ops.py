@@ -75,3 +75,16 @@ class TestUtils:
         )
         inputs = (torch.randn(1, 3, 160, 160),)
         assert profile(net, inputs=inputs, stride=32, verbose=False) == profile(net, inputs=inputs, verbose=False)
+
+    def test_stride_estimate_fits_quadratic_and_rejects_cubic_rules(self):
+        """A quadratic custom rule must be extrapolated exactly, and a cubic one measured directly."""
+        for power in (2, 3):
+
+            def count_tokens(m, x, y, power=power):
+                """Charge a cost that grows as a power of the token count, like attention does quadratically."""
+                m.total_ops += (x[0].shape[-2] * x[0].shape[-1]) ** power
+
+            net = nn.Sequential(nn.Conv2d(3, 3, 3, padding=1, bias=False), CustomModule())
+            inputs = (torch.randn(1, 3, 160, 160),)
+            kwargs = {"inputs": inputs, "custom_ops": {CustomModule: count_tokens}, "verbose": False}
+            assert profile(net, stride=32, **kwargs) == profile(net, **kwargs)
