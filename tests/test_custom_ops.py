@@ -73,7 +73,7 @@ class TestUtils:
             nn.Flatten(),
             nn.Linear(4, 2, bias=False),
         )
-        inputs = (torch.randn(1, 3, 160, 160),)
+        inputs = (torch.randn(1, 3, 320, 320),)
         assert profile(net, inputs=inputs, stride=32, verbose=False) == profile(net, inputs=inputs, verbose=False)
 
     def test_stride_estimate_fits_quadratic_and_rejects_cubic_rules(self):
@@ -85,6 +85,21 @@ class TestUtils:
                 m.total_ops += (x[0].shape[-2] * x[0].shape[-1]) ** power
 
             net = nn.Sequential(nn.Conv2d(3, 3, 3, padding=1, bias=False), CustomModule())
-            inputs = (torch.randn(1, 3, 160, 160),)
+            inputs = (torch.randn(1, 3, 320, 320),)
             kwargs = {"inputs": inputs, "custom_ops": {CustomModule: count_tokens}, "verbose": False}
             assert profile(net, stride=32, **kwargs) == profile(net, **kwargs)
+
+    def test_stride_min_cells_starts_past_a_saturating_cost(self):
+        """Proxies starting at min_cells must extrapolate a cost that stops growing below that width."""
+
+        def count_capped(m, x, y):
+            """Charge a cost that saturates at six stride cells, like a decoder selecting a fixed number of queries."""
+            m.total_ops += min(x[0].shape[-2] * x[0].shape[-1], 6 * 32 * 32)
+
+        net = nn.Sequential(nn.Conv2d(3, 3, 3, padding=1, bias=False), CustomModule())
+        kwargs = {
+            "inputs": (torch.randn(1, 3, 320, 640),),
+            "custom_ops": {CustomModule: count_capped},
+            "verbose": False,
+        }
+        assert profile(net, stride=32, min_cells=6, **kwargs) == profile(net, **kwargs)

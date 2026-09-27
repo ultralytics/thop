@@ -1,9 +1,11 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import pytest
 import torch
 from torch import nn
 
 from thop import profile
+from thop.profile import _COUNTS_FUNCTIONS
 
 
 class TestUtils:
@@ -33,3 +35,29 @@ class TestUtils:
         flops, params = profile(net, inputs=(torch.randn(n, in_c),))
         print(flops, params)
         assert flops == n * in_c * out_c
+
+    @pytest.mark.skipif(not _COUNTS_FUNCTIONS, reason="functional products are counted on torch>=1.13")
+    def test_functional_products(self):
+        """Functional products are counted, except inside a module whose own rule already accounts for them."""
+
+        class Gram(nn.Module):
+            """Multiply the input by its own transpose, which no module hook observes."""
+
+            def forward(self, x):
+                """Return the batched Gram matrix."""
+                return x @ x.transpose(-2, -1)
+
+        x = torch.randn(2, 8, 16)
+        assert profile(Gram(), inputs=(x,), verbose=False)[0] == 2 * 8 * 8 * 16
+        assert profile(Gram(), inputs=(x,), custom_ops={Gram: lambda m, x, y: None}, verbose=False)[0] == 0
+        if hasattr(nn.functional, "scaled_dot_product_attention"):  # torch>=2.0
+
+            class SDPA(nn.Module):
+                """Attend from the input to itself."""
+
+                def forward(self, q):
+                    """Return scaled dot-product self-attention."""
+                    return nn.functional.scaled_dot_product_attention(q, q, q)
+
+            q = torch.randn(2, 4, 8, 16)
+            assert profile(SDPA(), inputs=(q,), verbose=False)[0] == 2 * 4 * 8 * 8 * (16 + 16)

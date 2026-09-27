@@ -52,8 +52,10 @@ print(f"MACs: {macs}, Parameters: {params}")
 
 For image models, pass the target-size input and the model stride to estimate MACs from smaller stride-aligned
 profiles. `profile()` retains a single-profile fast path for spatial-only models, fits two points when size-independent
-operations may be present, fits three points and checks a fourth when attention or `custom_ops` may make the cost
-quadratic in image area, and falls back to the target input when the smaller inputs are unsuitable:
+operations may be present, fits three points and checks a fourth when attention, functional products or `custom_ops`
+may make the cost quadratic in image area, and falls back to the target input when the smaller inputs are unsuitable or
+no smaller than a quarter of it. Raise `min_cells` when the cost only takes its final form past some input width, e.g.
+a decoder selecting a fixed number of queries from its anchors:
 
 ```python
 inputs = (torch.randn(1, 3, 640, 640),)
@@ -61,6 +63,10 @@ macs, params = profile(model, inputs=inputs, stride=32)
 ```
 
 Calls that omit `stride` retain the exact profiling behavior shown in the basic example.
+
+On torch>=1.13, `profile()` also counts the matrix products a forward runs functionally (`@`, `torch.matmul`,
+`torch.bmm` and `scaled_dot_product_attention`), which no module hook observes, except inside a module whose own
+counting rule already accounts for them.
 
 ### Define Custom Rules for Third-Party Modules
 

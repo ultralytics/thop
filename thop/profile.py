@@ -1,5 +1,6 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import contextlib
 import inspect
 
 from thop.rnn_hooks import (
@@ -126,6 +127,51 @@ if hasattr(nn, "RMSNorm"):  # torch>=2.4, and its elementwise_affine flag is one
 
 if hasattr(nn.modules.padding, "_CircularPadNd"):  # torch>=2.1, which is where the CircularPad classes start
     register_hooks[nn.modules.padding._CircularPadNd] = zero_ops
+
+
+def _count_matmul(args, kwargs, y):
+    """Count one multiply-add per output element per element of the contracted axis of a (batched) matrix product."""
+    return y.numel() * (args[0] if args else kwargs["input"]).shape[-1]
+
+
+def _count_sdpa(args, kwargs, y):
+    """Count the query-key and attention-value products of scaled dot-product attention."""
+    q, k, v = (*args, *(kwargs[n] for n in ("query", "key", "value")[len(args) :]))[:3]
+    return y.numel() // v.shape[-1] * k.shape[-2] * (q.shape[-1] + v.shape[-1])
+
+
+# products a module's forward runs functionally, which no module hook observes
+functional_hooks = {
+    torch.matmul: _count_matmul,
+    torch.Tensor.matmul: _count_matmul,
+    torch.Tensor.__matmul__: _count_matmul,
+    torch.bmm: _count_matmul,
+    torch.Tensor.bmm: _count_matmul,
+}
+if hasattr(nn.functional, "scaled_dot_product_attention"):  # torch>=2.0
+    functional_hooks[nn.functional.scaled_dot_product_attention] = _count_sdpa
+
+# torch>=1.13: 1.12 ships a TorchFunctionMode that cannot be entered as a context manager
+_COUNTS_FUNCTIONS = hasattr(torch.overrides, "TorchFunctionMode") and torch.__version__ >= "1.13"
+
+if _COUNTS_FUNCTIONS:
+
+    class _FunctionCounter(torch.overrides.TorchFunctionMode):
+        """Count functional products run outside every module that has a non-zero counting rule of its own."""
+
+        def __init__(self, state):
+            """Accumulate into state["ops"] while state["depth"], the count of such modules running, is zero."""
+            super().__init__()
+            self.state = state
+
+        def __torch_function__(self, func, types, args=(), kwargs=None):
+            """Run func and count it when it is a product that no active module rule already accounts for."""
+            kwargs = kwargs or {}
+            y = func(*args, **kwargs)
+            rule = functional_hooks.get(func)
+            if rule is not None and not self.state["depth"]:
+                self.state["ops"] += rule(args, kwargs, y)
+            return y
 
 
 def _resolve_rule(m_type, custom_ops, types_collection, verbose, report_missing):
@@ -302,9 +348,16 @@ def profile(
     ret_layer_info=False,
     report_missing=False,
     stride=None,
+    min_cells=1,
 ):
-    """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs."""
+    """Profiles a PyTorch model, optionally estimating target-image MACs from smaller stride-aligned inputs.
+
+    Proxy inputs are one stride tall and `min_cells` or more strides wide; raise `min_cells` for a model whose cost
+    changes form below some input size, e.g. a decoder that selects a fixed number of queries from its anchors.
+    """
     handler_collection = {}
+    function_handles = []
+    functional = {"ops": 0, "depth": 0}  # _FunctionCounter state
     displaced_collection = {}
     types_collection = set()
     if custom_ops is None:
@@ -332,6 +385,13 @@ def profile(
         handler_collection[m] = None
         if fn is not None and fn is not zero_ops:
             handler_collection[m] = _register_counter(m, fn, keep_result=False)  # never the module output
+            if _COUNTS_FUNCTIONS:  # a module's rule accounts for its own products, as a custom attention rule does
+                function_handles.append(
+                    m.register_forward_pre_hook(lambda *_: functional.update(depth=functional["depth"] + 1))
+                )
+                function_handles.append(
+                    m.register_forward_hook(lambda *_: functional.update(depth=functional["depth"] - 1))
+                )
         types_collection.add(m_type)
 
     counted = set()
@@ -365,10 +425,11 @@ def profile(
             counted.clear()
             for m in handler_collection:
                 m.__dict__["total_ops"] = 0
-            with torch.no_grad():
+            functional.update(ops=0, depth=0)
+            with torch.no_grad(), _FunctionCounter(functional) if _COUNTS_FUNCTIONS else contextlib.nullcontext():
                 model(*input_values)
-            # Count the executed hook record; build the surviving tree only when requested.
-            total = sum(float(m.__dict__.get("total_ops", 0)) for m in handler_collection)
+            # Count the executed hook record and functional products; build the surviving tree only when requested.
+            total = sum(float(m.__dict__.get("total_ops", 0)) for m in handler_collection) + functional["ops"]
             return total, dfs_count(model)[1] if ret_layer_info else {}
 
         if stride is None or ret_layer_info:
@@ -379,6 +440,8 @@ def profile(
             stride = (stride, stride) if isinstance(stride, int) else tuple(stride)
             if len(stride) != 2 or min(stride) < 1:
                 raise ValueError("stride must be a positive integer or a pair of positive integers")
+            if not isinstance(min_cells, int) or min_cells < 1:
+                raise ValueError("min_cells must be a positive integer")
 
             image = inputs[0]
             target_height, target_width = image.shape[-2:]
@@ -392,27 +455,32 @@ def profile(
                 nn.GRUCell,
                 nn.LSTMCell,
             )
-            # Attention is quadratic in image area and a caller's own rule may be anything, so a model carrying either
-            # fits a quadratic through three proxies and checks it against a fourth, measuring directly on a mismatch.
+            # Attention is quadratic in image area and a caller's own rule may be anything, so a model carrying either,
+            # or running functional products, fits a quadratic through three proxies and checks it against a fourth,
+            # measuring directly on a mismatch.
             quadratic = any(
                 isinstance(m, nn.MultiheadAttention) or any(t in custom_ops for t in type(m).__mro__)
                 for m in model.modules()
             )
             required_samples = 4 if quadratic else 2 if any(isinstance(m, fixed_ops) for m in model.modules()) else 1
-            cells = (target_height // stride[0]) * (target_width // stride[1])  # proxy k is k stride cells wide
+            cells = (target_height // stride[0]) * (target_width // stride[1])  # a proxy is k stride cells wide
             ops = []
-            if target_height % stride[0] == target_width % stride[1] == 0 and cells > required_samples:
+            # proxies pay off only while the planned ones, from min_cells cells wide, cover at most a quarter of the target
+            planned = required_samples * min_cells + required_samples * (required_samples - 1) // 2
+            if target_height % stride[0] == target_width % stride[1] == 0 and 4 * planned <= cells:
                 try:
-                    for k in range(1, required_samples + 1):
-                        ops.append(run((image.new_empty((*image.shape[:-2], stride[0], stride[1] * k)),))[0])
+                    while len(ops) < (4 if functional["ops"] else required_samples):
+                        width = stride[1] * (min_cells + len(ops))
+                        ops.append(run((image.new_empty((*image.shape[:-2], stride[0], width)),))[0])
                 except Exception:
                     ops.clear()
 
             if ops and (len(ops) < 4 or ops[3] - 3 * ops[2] + 3 * ops[1] - ops[0] == 0):
-                # Newton forward differences in k; a single spatial-only sample is proportional, i.e. zero at k=0
-                d1 = ops[1] - ops[0] if len(ops) > 1 else ops[0]
+                # Newton forward differences from k=min_cells; a single spatial-only sample is proportional to k
+                t = cells - min_cells
+                d1 = ops[1] - ops[0] if len(ops) > 1 else ops[0] / min_cells
                 d2 = ops[2] - 2 * ops[1] + ops[0] if len(ops) > 2 else 0.0
-                total_ops = ops[0] + (cells - 1) * d1 + (cells - 1) * (cells - 2) // 2 * d2
+                total_ops = ops[0] + t * d1 + t * (t - 1) // 2 * d2
                 ret_dict = {}
             else:
                 total_ops, ret_dict = run(inputs)
@@ -420,7 +488,7 @@ def profile(
         # and includes unsupported or unexecuted modules.
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind hooks or temporary attributes
-        for handler in filter(None, handler_collection.values()):
+        for handler in [*filter(None, handler_collection.values()), *function_handles]:
             handler.remove()
         for m in handler_collection:
             m.__dict__.pop("total_ops", None)
