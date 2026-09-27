@@ -445,11 +445,11 @@ def profile(
 
             image = inputs[0]
             target_height, target_width = image.shape[-2:]
-            fixed_ops = (
+            fixed_ops = (  # size-independent costs, or adaptive pools that make every layer after them one
                 nn.Linear,
-                nn.AdaptiveAvgPool1d,
-                nn.AdaptiveAvgPool2d,
-                nn.AdaptiveAvgPool3d,
+                nn.Bilinear,
+                nn.modules.pooling._AdaptiveAvgPoolNd,
+                nn.modules.pooling._AdaptiveMaxPoolNd,
                 nn.RNNBase,
                 nn.RNNCell,
                 nn.GRUCell,
