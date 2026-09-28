@@ -64,9 +64,9 @@ macs, params = profile(model, inputs=inputs, stride=32)
 
 Calls that omit `stride` retain the exact profiling behavior shown in the basic example.
 
-On torch>=1.13, `profile()` also counts the matrix products a forward runs functionally (`@`, `torch.matmul`,
-`torch.bmm` and `scaled_dot_product_attention`), which no module hook observes, except inside a module whose own
-counting rule already accounts for them.
+On torch>=1.13, `profile()` also counts the products a forward runs functionally (`@`, `torch.matmul`, `torch.bmm`,
+two-operand `torch.einsum` and `scaled_dot_product_attention`), which no module hook observes, except inside a module
+whose own counting rule already accounts for them.
 
 ### Define Custom Rules for Third-Party Modules
 
