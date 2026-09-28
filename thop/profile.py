@@ -142,7 +142,7 @@ def _count_sdpa(args, kwargs, y):
 
 def _count_einsum(args, kwargs, y):
     """Count the multiply-adds of a two-operand einsum; one operand multiplies nothing and more are left uncounted."""
-    equation, *operands = args
+    equation, *operands = args  # torch rewrites the sublist form into an equation before dispatching here
     if len(operands) == 1 and isinstance(operands[0], (list, tuple)):  # einsum(equation, [a, b])
         operands = operands[0]
     if len(operands) != 2:  # more operands contract pairwise along a path this call does not show
