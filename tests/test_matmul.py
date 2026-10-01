@@ -50,6 +50,16 @@ class TestUtils:
         x = torch.randn(2, 8, 16)
         assert profile(Gram(), inputs=(x,), verbose=False)[0] == 2 * 8 * 8 * 16
         assert profile(Gram(), inputs=(x,), custom_ops={Gram: lambda m, x, y: None}, verbose=False)[0] == 0
+
+        class Similarity(nn.Module):
+            """Score each image cell against each text embedding, as an open-vocabulary head does."""
+
+            def forward(self, x, t):
+                """Return region-text similarities."""
+                return torch.einsum("bchw,bkc->bkhw", x, t)
+
+        x, t = torch.randn(2, 16, 4, 5), torch.randn(2, 3, 16)
+        assert profile(Similarity(), inputs=(x, t), verbose=False)[0] == 2 * 3 * 4 * 5 * 16
         if hasattr(nn.functional, "scaled_dot_product_attention"):  # torch>=2.0
 
             class SDPA(nn.Module):

@@ -140,6 +140,29 @@ def _count_sdpa(args, kwargs, y):
     return y.numel() // v.shape[-1] * k.shape[-2] * (q.shape[-1] + v.shape[-1])
 
 
+def _count_einsum(args, kwargs, y):
+    """Count the multiply-adds of a two-operand einsum; one operand multiplies nothing and more are left uncounted."""
+    equation, *operands = args  # torch rewrites the sublist form into an equation before dispatching here
+    if len(operands) == 1 and isinstance(operands[0], (list, tuple)):  # einsum(equation, [a, b])
+        operands = operands[0]
+    if len(operands) != 2:  # more operands contract pairwise along a path this call does not show
+        return 0
+    lhs, arrow, out = equation.replace(" ", "").partition("->")
+    if not arrow:  # implicit output: the ellipsis and every label written once
+        out = "..." + "".join(c for c in lhs if lhs.count(c) == 1)
+    sizes = []
+    for subscripts, t in zip(lhs.split(","), operands):
+        head, _, tail = subscripts.partition("...")
+        n = t.dim() - len(head) - len(tail)  # ellipsis dims, keyed by position from the right as they broadcast
+        sizes.append({k: d for k, d in zip([*head, *range(n, 0, -1), *tail], t.shape) if d != 1})
+    # a label one operand lacks or broadcasts from size 1 is summed away there before the product runs, unless kept
+    total = 1
+    for k in sizes[0].keys() | sizes[1].keys():
+        if (k in sizes[0] and k in sizes[1]) or (k in out if isinstance(k, str) else "..." in out):
+            total *= sizes[0].get(k, sizes[1].get(k))
+    return total
+
+
 # products a module's forward runs functionally, which no module hook observes
 functional_hooks = {
     torch.matmul: _count_matmul,
@@ -147,6 +170,7 @@ functional_hooks = {
     torch.Tensor.__matmul__: _count_matmul,
     torch.bmm: _count_matmul,
     torch.Tensor.bmm: _count_matmul,
+    torch.einsum: _count_einsum,
 }
 if hasattr(nn.functional, "scaled_dot_product_attention"):  # torch>=2.0
     functional_hooks[nn.functional.scaled_dot_product_attention] = _count_sdpa
