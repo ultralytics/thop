@@ -31,7 +31,6 @@ jobs:
       - uses: ultralytics/actions/setup-uv@main
         with:
           python-version: ${{ matrix.python }}
-          activate-environment: true
       - name: Install requirements
         run: |
           torch=""
