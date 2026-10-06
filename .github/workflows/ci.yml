@@ -28,7 +28,7 @@ jobs:
             torch: "1.8.0"
     steps:
       - uses: actions/checkout@v7
-      - uses: ultralytics/actions/setup-uv@main
+      - uses: ultralytics/actions/setup-uv@setup-uv-defaults
         with:
           python-version: ${{ matrix.python }}
       - name: Install requirements
