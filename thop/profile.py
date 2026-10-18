@@ -2,6 +2,7 @@
 
 import contextlib
 import inspect
+from types import SimpleNamespace
 
 from thop.rnn_hooks import (
     count_gru,
@@ -140,6 +141,15 @@ def _count_sdpa(args, kwargs, y):
     return y.numel() // v.shape[-1] * k.shape[-2] * (q.shape[-1] + v.shape[-1])
 
 
+def _count_multi_head_attention(args, kwargs, y):
+    """Count functional multi-head attention with the nn.MultiheadAttention rule."""
+    _, key, value, embed_dim, num_heads, _, _, bias_k, _, add_zero_attn = args[:10]  # torch passes these positionally
+    m = SimpleNamespace(embed_dim=embed_dim, num_heads=num_heads, kdim=key.shape[-1], vdim=value.shape[-1])
+    m.bias_k, m.add_zero_attn, m.total_ops = bias_k, add_zero_attn, 0
+    count_multihead_attention(m, args, y)
+    return m.total_ops
+
+
 def _count_einsum(args, kwargs, y):
     """Count the multiply-adds of a two-operand einsum; one operand multiplies nothing and more are left uncounted."""
     equation, *operands = args  # torch rewrites the sublist form into an equation before dispatching here
@@ -171,6 +181,9 @@ functional_hooks = {
     torch.bmm: _count_matmul,
     torch.Tensor.bmm: _count_matmul,
     torch.einsum: _count_einsum,
+    nn.functional.linear: _count_matmul,
+    # the projections and attention run inside the call, which the counting mode does not re-enter
+    nn.functional.multi_head_attention_forward: _count_multi_head_attention,
 }
 if hasattr(nn.functional, "scaled_dot_product_attention"):  # torch>=2.0
     functional_hooks[nn.functional.scaled_dot_product_attention] = _count_sdpa
