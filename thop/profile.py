@@ -365,6 +365,7 @@ def profile_origin(model, inputs, custom_ops=None, verbose=True, report_missing=
         total_ops = total_ops.item()
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind the hooks or the buffers this call created
+        torch.clear_autocast_cache()  # torch<2.11 caches no_grad casts that detach the caller's next autocast forward
         for handler in filter(None, handler_collection.values()):
             handler.remove()
         for m in handler_collection:
@@ -525,6 +526,7 @@ def profile(
         # and includes unsupported or unexecuted modules.
         total_params = float(calculate_parameters(model.parameters()))
     finally:  # no failure, at any stage, may leave behind hooks or temporary attributes
+        torch.clear_autocast_cache()  # torch<2.11 caches no_grad casts that detach the caller's next autocast forward
         for handler in [*filter(None, handler_collection.values()), *function_handles]:
             handler.remove()
         for m in handler_collection:
