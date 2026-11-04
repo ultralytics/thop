@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.14"]
+        python: ["3.15"]
         torch: [latest]
         include:
           - python: "3.8" # the requires-python floor; torch 1.8.0 requires python >=3.6, <=3.9
