@@ -48,7 +48,7 @@ ruff format --line-length 120 .
 npx prettier@3.8.5 --write --print-width 120 "**/*.{yml,yaml,json,md}"
 ```
 
-- `ci.yml` runs `tests/` on every pull request, on pushes to `main`, and nightly, at the `requires-python` floor (Python 3.8 with torch 1.8.0) and at the ceiling (3.14, latest torch), both CPU-only; coverage is not measured. Keep `--target-version py38` so pyupgrade never emits syntax that breaks the floor. The other workflows are `format.yml` (autoformat, AI labels, summaries and review on PRs), `cla.yml` (CLA signing) and `publish.yml` (see Conventions).
+- `ci.yml` runs `tests/` on every pull request, on pushes to `main`, and nightly, at the `requires-python` floor (Python 3.8 with torch 1.8.0) and at the ceiling (3.15, latest torch), both CPU-only; coverage is not measured. Keep `--target-version py38` so pyupgrade never emits syntax that breaks the floor. The other workflows are `format.yml` (autoformat, AI labels, summaries and review on PRs), `cla.yml` (CLA signing) and `publish.yml` (see Conventions).
 
 ## Architecture
 
